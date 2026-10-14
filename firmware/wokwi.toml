@@ -1,0 +1,8 @@
+# Wokwi for VS Code: build with `pio run` (env esp32dev_sim), then F1 > "Wokwi: Start Simulator".
+# firmware.factory.bin = bootloader + partition table (huge_app) + application.
+[wokwi]
+version = 1
+firmware = '.pio/build/esp32dev_sim/firmware.factory.bin'
+elf = '.pio/build/esp32dev_sim/firmware.elf'
+# Serial port for the dashboard: rfc2217://localhost:4000
+rfc2217ServerPort = 4000

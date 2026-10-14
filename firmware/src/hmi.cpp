@@ -203,10 +203,10 @@ void begin() {
   pinMode(PIN_BTN_HOME, INPUT_PULLUP);
   pinMode(PIN_BTN_STOW, INPUT_PULLUP);
   pinMode(PIN_ESTOP, INPUT_PULLUP);
-  pinMode(PIN_ENC_SW, INPUT_PULLUP);
+  pinMode(PIN_ENC_SW, INPUT);  // GPIO35 has no internal pull-up: 10k external
   pinMode(PIN_ENC_CLK, INPUT);
   pinMode(PIN_ENC_DT, INPUT);
-  pinMode(PIN_LIM_AZ, INPUT);
+  pinMode(PIN_LIM_AZ, INPUT_PULLUP);
   pinMode(PIN_LIM_EL, INPUT_PULLUP);
 #if !POLARIS_QEMU
   analogReadResolution(12);

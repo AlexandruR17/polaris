@@ -27,10 +27,10 @@ Fiecare etapă se încheie cu verificare prin rulare și cu un commit.
 - [x] Binarul real rulat în QEMU Espressif (tools/qemu_smoke.py)
 
 ## Etapa 3 - Circuit Wokwi
-- [ ] `diagram.json` complet, grupat pe funcții, fire colorate
-- [ ] `wokwi.toml` (rfc2217ServerPort = 4000), `libraries.txt` pentru wokwi.com
-- [ ] Validare automată: fiecare pin folosit în firmware există în diagramă
-- [ ] Randare a diagramei (imagine) pentru README
+- [x] `diagram.json` generat (tools/wokwi/gen_diagram.py), grupat pe funcții, fire colorate, legendă
+- [x] `wokwi.toml` (rfc2217ServerPort = 4000), pachet pentru wokwi.com cu `libraries.txt`
+- [x] Validare: linterul oficial @wokwi/diagram-lint (0 erori) + check_pins.py (pins.h == diagramă)
+- [x] Randare a diagramei cu grafica oficială Wokwi (docs/img/wokwi_diagram.png)
 
 ## Etapa 4 - Dashboard „POLARIS Ground Station"
 - [ ] Legătură rfc2217 / serial / simulare internă (copia firmware-ului)

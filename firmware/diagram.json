@@ -1,0 +1,1228 @@
+{
+  "version": 1,
+  "author": "POLARIS SAT-1",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "board-esp32-devkit-c-v4",
+      "id": "esp",
+      "top": 532.99,
+      "left": 847.28,
+      "rotate": 90,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-a4988",
+      "id": "drv_el",
+      "top": 407.71,
+      "left": 829.45,
+      "rotate": 270,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-stepper-motor",
+      "id": "mot_el",
+      "top": 199.36,
+      "left": 777.04,
+      "attrs": {
+        "size": "17",
+        "arrow": "#0ea5e9",
+        "display": "angle"
+      }
+    },
+    {
+      "type": "wokwi-stepper-motor",
+      "id": "mot_az",
+      "top": 199.36,
+      "left": 986.64,
+      "attrs": {
+        "size": "17",
+        "arrow": "#f97316",
+        "display": "angle"
+      }
+    },
+    {
+      "type": "wokwi-a4988",
+      "id": "drv_az",
+      "top": 407.71,
+      "left": 1039.05,
+      "rotate": 270,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-ky-040",
+      "id": "enc",
+      "top": 337.05,
+      "left": 1182.29,
+      "rotate": 90,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-potentiometer",
+      "id": "pot",
+      "top": 361.5,
+      "left": 1284.84,
+      "attrs": {
+        "value": "2048"
+      }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r_sw",
+      "top": 365.1,
+      "left": 1166.69,
+      "rotate": 90,
+      "attrs": {
+        "value": "10000"
+      }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "estop",
+      "top": 384.0,
+      "left": 683.74,
+      "rotate": 90,
+      "attrs": {
+        "color": "red",
+        "label": "E-STOP",
+        "bounce": "0",
+        "key": "e"
+      }
+    },
+    {
+      "type": "wokwi-relay-module",
+      "id": "relay",
+      "top": 370.36,
+      "left": 500.54,
+      "rotate": 180,
+      "attrs": {
+        "transistor": "pnp"
+      }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led_pwr",
+      "top": 387.3,
+      "left": 435.54,
+      "attrs": {
+        "color": "blue",
+        "label": "MOTOARE"
+      }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r_pwr",
+      "top": 469.2,
+      "left": 420.99,
+      "rotate": 90,
+      "attrs": {
+        "value": "1000"
+      }
+    },
+    {
+      "type": "wokwi-buzzer",
+      "id": "buzzer",
+      "top": 834.04,
+      "left": 370.71,
+      "attrs": {
+        "volume": "0.1"
+      }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led_r",
+      "top": 836.04,
+      "left": 469.01,
+      "attrs": {
+        "color": "red",
+        "label": "EROARE"
+      }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led_y",
+      "top": 836.04,
+      "left": 533.01,
+      "attrs": {
+        "color": "yellow",
+        "label": "AȘTEPT."
+      }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led_g",
+      "top": 836.04,
+      "left": 597.01,
+      "attrs": {
+        "color": "green",
+        "label": "URMĂRIRE"
+      }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r_r",
+      "top": 915.94,
+      "left": 454.46,
+      "rotate": 90,
+      "attrs": {
+        "value": "220"
+      }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r_y",
+      "top": 915.94,
+      "left": 518.46,
+      "rotate": 90,
+      "attrs": {
+        "value": "220"
+      }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r_g",
+      "top": 915.94,
+      "left": 582.46,
+      "rotate": 90,
+      "attrs": {
+        "value": "220"
+      }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn_stow",
+      "top": 849.04,
+      "left": 656.01,
+      "rotate": 90,
+      "attrs": {
+        "color": "blue",
+        "label": "STOW",
+        "bounce": "0",
+        "key": "s"
+      }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn_home",
+      "top": 849.04,
+      "left": 723.31,
+      "rotate": 90,
+      "attrs": {
+        "color": "white",
+        "label": "HOME",
+        "bounce": "0",
+        "key": "h"
+      }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn_mode",
+      "top": 849.04,
+      "left": 790.61,
+      "rotate": 90,
+      "attrs": {
+        "color": "green",
+        "label": "MOD",
+        "bounce": "0",
+        "key": "m"
+      }
+    },
+    {
+      "type": "wokwi-slide-switch",
+      "id": "lim_el",
+      "top": 837.14,
+      "left": 872.91,
+      "rotate": 180,
+      "attrs": {
+        "bounce": "0"
+      }
+    },
+    {
+      "type": "wokwi-slide-switch",
+      "id": "lim_az",
+      "top": 837.14,
+      "left": 940.11,
+      "rotate": 180,
+      "attrs": {
+        "bounce": "0"
+      }
+    },
+    {
+      "type": "wokwi-mpu6050",
+      "id": "imu",
+      "top": 832.26,
+      "left": 996.61,
+      "attrs": {}
+    },
+    {
+      "type": "board-ssd1306",
+      "id": "oled",
+      "top": 831.57,
+      "left": 1130.04,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-lcd2004",
+      "id": "lcd",
+      "top": 830.04,
+      "left": 1294.73,
+      "attrs": {
+        "pins": "i2c"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "t_power",
+      "top": 85.36,
+      "left": 425.54,
+      "attrs": {
+        "text": "ALIMENTARE ȘI MOTOARE",
+        "fontSize": "18",
+        "color": "#0f172a"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "t_manual",
+      "top": 274.0,
+      "left": 1195.34,
+      "attrs": {
+        "text": "REGLAJ MANUAL",
+        "fontSize": "18",
+        "color": "#0f172a"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "t_panel",
+      "top": 974.04,
+      "left": 370.71,
+      "attrs": {
+        "text": "INTERFAȚĂ OPERATOR",
+        "fontSize": "18",
+        "color": "#0f172a"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "t_sens",
+      "top": 923.46,
+      "left": 940.11,
+      "attrs": {
+        "text": "SENZORI",
+        "fontSize": "18",
+        "color": "#0f172a"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "t_disp",
+      "top": 946.99,
+      "left": 1130.04,
+      "attrs": {
+        "text": "AFIȘAJE (I2C)",
+        "fontSize": "18",
+        "color": "#0f172a"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "t_az",
+      "top": 179.36,
+      "left": 1026.64,
+      "attrs": {
+        "text": "Axa AZIMUT",
+        "fontSize": "13",
+        "color": "#9a3412"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "t_el",
+      "top": 179.36,
+      "left": 817.04,
+      "attrs": {
+        "text": "Axa ELEVAȚIE",
+        "fontSize": "13",
+        "color": "#075985"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "t_lims",
+      "top": 876.04,
+      "left": 934.11,
+      "attrs": {
+        "text": "LIM AZ",
+        "fontSize": "11",
+        "color": "#111827"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "t_lime",
+      "top": 876.04,
+      "left": 866.91,
+      "attrs": {
+        "text": "LIM EL",
+        "fontSize": "11",
+        "color": "#111827"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "t_relay",
+      "top": 348.36,
+      "left": 500.54,
+      "attrs": {
+        "text": "releu: taie VMOT la E-STOP",
+        "fontSize": "11",
+        "color": "#111827"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "t_leg",
+      "top": 1039.54,
+      "left": 1294.73,
+      "attrs": {
+        "text": "Culori fire",
+        "fontSize": "14",
+        "color": "#0f172a"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "leg_pwr",
+      "top": 1061.54,
+      "left": 1294.73,
+      "attrs": {
+        "text": "■ alimentare logică 3V3",
+        "fontSize": "12",
+        "color": "red"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "leg_vmot",
+      "top": 1061.54,
+      "left": 1484.73,
+      "attrs": {
+        "text": "■ alimentare motoare (prin releu)",
+        "fontSize": "12",
+        "color": "#b91c1c"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "leg_gnd",
+      "top": 1079.54,
+      "left": 1294.73,
+      "attrs": {
+        "text": "■ masă (GND)",
+        "fontSize": "12",
+        "color": "black"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "leg_motor",
+      "top": 1079.54,
+      "left": 1484.73,
+      "attrs": {
+        "text": "■ STEP / DIR / ENABLE",
+        "fontSize": "12",
+        "color": "orange"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "leg_coil",
+      "top": 1097.54,
+      "left": 1294.73,
+      "attrs": {
+        "text": "■ bobine motor",
+        "fontSize": "12",
+        "color": "purple"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "leg_safety",
+      "top": 1097.54,
+      "left": 1484.73,
+      "attrs": {
+        "text": "■ E-STOP și releu",
+        "fontSize": "12",
+        "color": "magenta"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "leg_manual",
+      "top": 1115.54,
+      "left": 1294.73,
+      "attrs": {
+        "text": "■ encoder și potențiometru",
+        "fontSize": "12",
+        "color": "teal"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "leg_i2c",
+      "top": 1115.54,
+      "left": 1484.73,
+      "attrs": {
+        "text": "■ magistrala I2C",
+        "fontSize": "12",
+        "color": "blue"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "leg_limit",
+      "top": 1133.54,
+      "left": 1294.73,
+      "attrs": {
+        "text": "■ limitatoare de cursă",
+        "fontSize": "12",
+        "color": "green"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "leg_panel",
+      "top": 1133.54,
+      "left": 1484.73,
+      "attrs": {
+        "text": "■ butoane, LED-uri, buzzer",
+        "fontSize": "12",
+        "color": "#d4a017"
+      }
+    }
+  ],
+  "connections": [
+    [
+      "drv_el:STEP",
+      "esp:27",
+      "orange",
+      []
+    ],
+    [
+      "drv_el:DIR",
+      "esp:26",
+      "orange",
+      []
+    ],
+    [
+      "drv_el:ENABLE",
+      "esp:14",
+      "orange",
+      [
+        "v18",
+        "h48"
+      ]
+    ],
+    [
+      "drv_az:ENABLE",
+      "esp:25",
+      "orange",
+      [
+        "v18",
+        "h-132.8"
+      ]
+    ],
+    [
+      "drv_az:STEP",
+      "esp:33",
+      "orange",
+      [
+        "v28",
+        "h-180.8"
+      ]
+    ],
+    [
+      "drv_az:DIR",
+      "esp:32",
+      "orange",
+      [
+        "v38",
+        "h-180.8"
+      ]
+    ],
+    [
+      "enc:SW",
+      "esp:35",
+      "teal",
+      [
+        "v88",
+        "h-318.53"
+      ]
+    ],
+    [
+      "enc:DT",
+      "esp:34",
+      "teal",
+      [
+        "v98",
+        "h-318.53"
+      ]
+    ],
+    [
+      "enc:CLK",
+      "esp:VN",
+      "teal",
+      [
+        "v108",
+        "h-318.43"
+      ]
+    ],
+    [
+      "pot:SIG",
+      "esp:VP",
+      "teal",
+      [
+        "v118",
+        "h-364.83"
+      ]
+    ],
+    [
+      "estop:1.r",
+      "esp:12",
+      "magenta",
+      [
+        "v58",
+        "h135.97"
+      ]
+    ],
+    [
+      "estop:2.r",
+      "esp:GND.1",
+      "black",
+      [
+        "v68",
+        "h145.37"
+      ]
+    ],
+    [
+      "relay:IN",
+      "esp:13",
+      "magenta",
+      [
+        "h30",
+        "v128",
+        "h189.07"
+      ]
+    ],
+    [
+      "relay:GND",
+      "esp:GND.1",
+      "black",
+      [
+        "h22",
+        "v138.5",
+        "h206.67"
+      ]
+    ],
+    [
+      "relay:VCC",
+      "esp:5V",
+      "#b91c1c",
+      [
+        "h14",
+        "v118.7",
+        "h166.67"
+      ]
+    ],
+    [
+      "relay:COM",
+      "relay:VCC",
+      "#b91c1c",
+      [
+        "h-12",
+        "v39.7",
+        "h127.9",
+        "v-29.3",
+        "h-6"
+      ]
+    ],
+    [
+      "drv_el:MS1",
+      "drv_el:MS2",
+      "red",
+      []
+    ],
+    [
+      "drv_el:MS2",
+      "drv_el:MS3",
+      "red",
+      []
+    ],
+    [
+      "drv_el:MS3",
+      "drv_el:RESET",
+      "red",
+      []
+    ],
+    [
+      "drv_el:RESET",
+      "drv_el:SLEEP",
+      "red",
+      []
+    ],
+    [
+      "drv_el:SLEEP",
+      "drv_el:VDD",
+      "red",
+      [
+        "v7",
+        "h31.2",
+        "v-63.85",
+        "h-21.6"
+      ]
+    ],
+    [
+      "drv_el:2B",
+      "mot_el:A-",
+      "purple",
+      []
+    ],
+    [
+      "drv_el:2A",
+      "mot_el:A+",
+      "purple",
+      []
+    ],
+    [
+      "drv_el:1A",
+      "mot_el:B+",
+      "purple",
+      []
+    ],
+    [
+      "drv_el:1B",
+      "mot_el:B-",
+      "purple",
+      []
+    ],
+    [
+      "drv_az:MS1",
+      "drv_az:MS2",
+      "red",
+      []
+    ],
+    [
+      "drv_az:MS2",
+      "drv_az:MS3",
+      "red",
+      []
+    ],
+    [
+      "drv_az:MS3",
+      "drv_az:RESET",
+      "red",
+      []
+    ],
+    [
+      "drv_az:RESET",
+      "drv_az:SLEEP",
+      "red",
+      []
+    ],
+    [
+      "drv_az:SLEEP",
+      "drv_az:VDD",
+      "red",
+      [
+        "v7",
+        "h31.2",
+        "v-63.85",
+        "h-21.6"
+      ]
+    ],
+    [
+      "drv_az:2B",
+      "mot_az:A-",
+      "purple",
+      []
+    ],
+    [
+      "drv_az:2A",
+      "mot_az:A+",
+      "purple",
+      []
+    ],
+    [
+      "drv_az:1A",
+      "mot_az:B+",
+      "purple",
+      []
+    ],
+    [
+      "drv_az:1B",
+      "mot_az:B-",
+      "purple",
+      []
+    ],
+    [
+      "esp:3V3",
+      "pot:VCC",
+      "red",
+      [
+        "v-8",
+        "h418.23",
+        "v-141.89",
+        "h-62.6"
+      ]
+    ],
+    [
+      "pot:VCC",
+      "drv_az:VDD",
+      "red",
+      [
+        "v12",
+        "h62.6",
+        "v-264.64",
+        "h-232.2",
+        "v226.79",
+        "h-72.43"
+      ]
+    ],
+    [
+      "drv_az:VDD",
+      "drv_el:VDD",
+      "red",
+      [
+        "v-18",
+        "h72.43",
+        "v-226.79",
+        "h-212.6",
+        "v226.79",
+        "h-69.43"
+      ]
+    ],
+    [
+      "r_sw:1",
+      "drv_az:VDD",
+      "red",
+      [
+        "v-163.84",
+        "h-32",
+        "v226.79",
+        "h-72.43"
+      ]
+    ],
+    [
+      "enc:VCC",
+      "r_sw:1",
+      "red",
+      [
+        "v8",
+        "h-29.2",
+        "v-106.8",
+        "h-14"
+      ]
+    ],
+    [
+      "r_sw:2",
+      "enc:SW",
+      "red",
+      [
+        "v34",
+        "h52.5"
+      ]
+    ],
+    [
+      "drv_az:GND",
+      "enc:GND",
+      "black",
+      [
+        "v-10",
+        "h74.83",
+        "v33.85",
+        "h54"
+      ]
+    ],
+    [
+      "enc:GND",
+      "pot:GND",
+      "black",
+      [
+        "v16",
+        "h73.6",
+        "v-10",
+        "h10"
+      ]
+    ],
+    [
+      "drv_az:GND",
+      "drv_el:GND",
+      "black",
+      [
+        "v-10",
+        "h74.83",
+        "v-250.79",
+        "h-212.6",
+        "v250.79",
+        "h-71.83"
+      ]
+    ],
+    [
+      "r_pwr:2",
+      "drv_el:GND",
+      "black",
+      [
+        "v8",
+        "h-45",
+        "v-350.74",
+        "h558.1",
+        "v250.79",
+        "h-71.83"
+      ]
+    ],
+    [
+      "drv_az:GND",
+      "esp:GND.2",
+      "black",
+      [
+        "v-10",
+        "h74.83",
+        "v-250.79",
+        "h234.2",
+        "v535.68",
+        "h-432.23"
+      ]
+    ],
+    [
+      "led_pwr:C",
+      "r_pwr:1",
+      "black",
+      []
+    ],
+    [
+      "relay:NO",
+      "drv_el:VMOT",
+      "#b91c1c",
+      [
+        "h-16",
+        "v-243.94",
+        "h277.77",
+        "v266.79",
+        "h48"
+      ]
+    ],
+    [
+      "drv_el:VMOT",
+      "drv_az:VMOT",
+      "#b91c1c",
+      [
+        "v-10",
+        "h-48",
+        "v-266.79",
+        "h199.03",
+        "v266.79",
+        "h58.57"
+      ]
+    ],
+    [
+      "relay:NO",
+      "led_pwr:A",
+      "#b91c1c",
+      [
+        "h-16",
+        "v50",
+        "h-38.3"
+      ]
+    ],
+    [
+      "lim_el:2",
+      "esp:19",
+      "green",
+      [
+        "v-134",
+        "h22"
+      ]
+    ],
+    [
+      "btn_mode:1.l",
+      "esp:18",
+      "#d4a017",
+      [
+        "v-124",
+        "h67.5"
+      ]
+    ],
+    [
+      "btn_home:1.l",
+      "esp:5",
+      "#d4a017",
+      [
+        "v-114",
+        "h125.2"
+      ]
+    ],
+    [
+      "btn_stow:1.l",
+      "esp:17",
+      "#d4a017",
+      [
+        "v-104",
+        "h182.9"
+      ]
+    ],
+    [
+      "led_g:A",
+      "esp:16",
+      "#d4a017",
+      [
+        "h12",
+        "v-134",
+        "h238.6"
+      ]
+    ],
+    [
+      "led_y:A",
+      "esp:4",
+      "#d4a017",
+      [
+        "h12",
+        "v-124",
+        "h293"
+      ]
+    ],
+    [
+      "led_r:A",
+      "esp:2",
+      "#d4a017",
+      [
+        "h12",
+        "v-114",
+        "h337.8"
+      ]
+    ],
+    [
+      "buzzer:2",
+      "esp:15",
+      "#d4a017",
+      [
+        "h26",
+        "v-144",
+        "h400.5"
+      ]
+    ],
+    [
+      "esp:GND.3",
+      "lim_el:1",
+      "black",
+      [
+        "v270",
+        "h-8.1",
+        "v-128",
+        "h-14"
+      ]
+    ],
+    [
+      "btn_stow:2.r",
+      "esp:GND.3",
+      "black",
+      [
+        "v53",
+        "h240.3"
+      ]
+    ],
+    [
+      "btn_home:2.r",
+      "esp:GND.3",
+      "black",
+      [
+        "v53",
+        "h173"
+      ]
+    ],
+    [
+      "btn_mode:2.r",
+      "esp:GND.3",
+      "black",
+      [
+        "v53",
+        "h105.7"
+      ]
+    ],
+    [
+      "r_r:2",
+      "esp:GND.3",
+      "black",
+      [
+        "v7.2",
+        "h436.6"
+      ]
+    ],
+    [
+      "r_y:2",
+      "esp:GND.3",
+      "black",
+      [
+        "v7.2",
+        "h372.6"
+      ]
+    ],
+    [
+      "r_g:2",
+      "esp:GND.3",
+      "black",
+      [
+        "v7.2",
+        "h308.6"
+      ]
+    ],
+    [
+      "buzzer:1",
+      "esp:GND.3",
+      "black",
+      [
+        "v40",
+        "h522.9"
+      ]
+    ],
+    [
+      "lim_az:2",
+      "esp:21",
+      "green",
+      [
+        "v-104",
+        "h-26"
+      ]
+    ],
+    [
+      "imu:SDA",
+      "esp:23",
+      "blue",
+      [
+        "v-124",
+        "h-73.6"
+      ]
+    ],
+    [
+      "imu:SCL",
+      "esp:22",
+      "blue",
+      [
+        "v-114",
+        "h-92.8"
+      ]
+    ],
+    [
+      "lim_az:1",
+      "esp:GND.2",
+      "black",
+      [
+        "v-12",
+        "h436.73",
+        "v-129",
+        "h-424.23"
+      ]
+    ],
+    [
+      "oled:SDA",
+      "imu:SDA",
+      "blue",
+      [
+        "v-124",
+        "h-154.72"
+      ]
+    ],
+    [
+      "oled:SCL",
+      "imu:SCL",
+      "blue",
+      [
+        "v-114",
+        "h-135.3"
+      ]
+    ],
+    [
+      "lcd:SDA",
+      "oled:SDA",
+      "blue",
+      [
+        "h-20",
+        "v-167",
+        "h-81.79"
+      ]
+    ],
+    [
+      "lcd:SCL",
+      "oled:SCL",
+      "blue",
+      [
+        "h-30",
+        "v-166.5",
+        "h-81.62"
+      ]
+    ],
+    [
+      "imu:VCC",
+      "oled:VCC",
+      "red",
+      [
+        "v-26",
+        "h106.65"
+      ]
+    ],
+    [
+      "imu:GND",
+      "oled:GND",
+      "black",
+      [
+        "v-16",
+        "h106.8"
+      ]
+    ],
+    [
+      "lcd:VCC",
+      "oled:VCC",
+      "red",
+      [
+        "h-10",
+        "v-59.5",
+        "h-111.07"
+      ]
+    ],
+    [
+      "lcd:GND",
+      "oled:GND",
+      "black",
+      [
+        "h-40",
+        "v-40",
+        "h-90.52"
+      ]
+    ],
+    [
+      "lcd:VCC",
+      "esp:3V3",
+      "red",
+      [
+        "h-10",
+        "v-59.5",
+        "h107.71",
+        "v-228.15",
+        "h-418.23"
+      ]
+    ],
+    [
+      "lcd:GND",
+      "esp:GND.2",
+      "black",
+      [
+        "h-40",
+        "v-40",
+        "h151.71",
+        "v-125",
+        "h-432.23"
+      ]
+    ]
+  ],
+  "dependencies": {}
+}

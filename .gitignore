@@ -7,3 +7,4 @@ build/
 *.sqlite
 *.db
 !docs/**
+tools/wokwi/.cache/
