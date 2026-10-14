@@ -189,6 +189,12 @@ class Satellite:
     def next_pass(self, t0, horizon_h=C.PASS_SEARCH_H, mask=C.MASK_EL_DEG):
         horizon_s = horizon_h * 3600.0
         el0 = self.elevation(t0)
+        if self.is_geo:
+            # geostationary: visible all the time or never, no search needed
+            if el0 <= mask:
+                return None
+            az0 = self.look(t0).az
+            return Pass(t0, None, t0, el0, az0, None)
         if el0 > mask:
             # pass in progress: walk back to AOS (max 30 min)
             t = t0

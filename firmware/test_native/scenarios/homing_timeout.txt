@@ -1,0 +1,6 @@
+# Real-hardware build: no switch ever closes, homing must time out
+SIMLIMITS 0
+T0 1792015503
+@0 BOOT
+@40000 LIMEL 1
+END 47000

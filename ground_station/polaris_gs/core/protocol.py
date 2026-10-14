@@ -12,7 +12,7 @@ TELEMETRY_KEYS = ("t_utc", "sat", "sat_az", "sat_el", "range_km", "cmd_az", "cmd
                   "next_aos", "next_los", "max_el")
 
 EVENTS = ("BOOT", "AOS", "LOS", "HOME_OK", "ESTOP", "FAULT", "MODE", "TLE_OK",
-          "TLE_FALLBACK", "KEYHOLE", "WRAP", "PASS", "ACK", "CMD", "ERR", "INFO")
+          "TLE_FALLBACK", "KEYHOLE", "RATE_LIMIT", "WRAP", "PASS", "ACK", "CMD", "ERR", "INFO")
 
 STATES = ("BOOT", "HOMING", "IDLE", "WAIT_AOS", "ACQUIRE", "TRACK", "STOW", "MANUAL",
           "DEMO", "ESTOP", "FAULT")
@@ -42,7 +42,7 @@ def parse_command(line):
             raise ValueError("no args")
         return Command(name)
     if name == "SAT":
-        if not rest.isdigit():
+        if not rest.isdigit() or len(rest) > 9 or not rest.isascii():
             raise ValueError("bad id")
         return Command(name, (int(rest),))
     if name == "MODE":
@@ -89,6 +89,12 @@ def parse_command(line):
             raise ValueError("jog range")
         return Command(name, (parts[0].strip().upper(), d))
     raise ValueError("unknown")
+
+
+def sanitize(s, n=64):
+    """Keep printable ASCII without quotes or backslashes (same as C++)."""
+    out = [c for c in s if 32 <= ord(c) < 127 and c not in '"\\']
+    return "".join(out)[: n - 1]
 
 
 def format_command(name, *args):

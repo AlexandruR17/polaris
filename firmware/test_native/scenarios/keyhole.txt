@@ -1,0 +1,6 @@
+# ISS pass with 89.4 deg max elevation (17 Aug 2026), DEMO x10
+T0 1786937667
+@0 BOOT
+@4000 CMD WARP:10
+@4000 CMD MODE:DEMO
+END 70000

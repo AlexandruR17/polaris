@@ -11,8 +11,10 @@ STATION_ALT_M = 80.0
 MASK_EL_DEG = 5.0              # track only above this elevation
 ACQUIRE_ERR_DEG = 1.0          # ACQUIRE -> TRACK when error is below this
 KEYHOLE_ERR_DEG = 0.5          # rate-limit error reported as keyhole above this
+KEYHOLE_EL_DEG = 70.0          # above this a rate limit hit is a keyhole
 PREPOSITION_LEAD_S = 120.0     # move to the rise azimuth this long before AOS
 DEMO_LEAD_S = 60.0             # DEMO jumps the clock to AOS minus this
+DEMO_MIN_MAX_EL_DEG = 20.0     # DEMO skips low passes
 PASS_SAMPLE_S = 2.0            # pass profile sampling period
 PASS_MAX_SAMPLES = 900         # 30 min of profile
 PASS_SEARCH_H = 24.0           # look-ahead for the next pass
@@ -62,6 +64,7 @@ SAT_HZ = 10
 CONTROL_HZ = 50
 
 DEMO_WARPS = (10, 30, 60)
+DEFAULT_DEMO_WARP = 30
 
 SATELLITES = {
     25544: "ISS",

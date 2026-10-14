@@ -16,13 +16,15 @@ Fiecare etapă se încheie cu verificare prin rulare și cu un commit.
 - [x] pytest pentru toate de mai sus, inclusiv comparație cu skyfield (< 0,1°)
 
 ## Etapa 2 - Firmware ESP32
-- [ ] `lib/polaris_core`: aceeași matematică în C++ (fără Arduino.h)
-- [ ] Test nativ g++ comparat cu referința Python
-- [ ] `src/`: mașina de stări, motoare (AccelStepper), MPU6050 + filtru complementar,
-      OLED (U8g2), LCD 2004, encoder, butoane, E-STOP + releu, LED-uri, buzzer
-- [ ] WiFi, NTP, descărcare TLE cu rezervă, protocol serial JSON
-- [ ] Mod SIMULATION pentru limitatoare
-- [ ] Compilare PlatformIO fără warning-uri, raport flash/RAM
+- [x] `lib/polaris_core`: aceeași matematică și mașina de stări în C++ (fără Arduino.h)
+- [x] SGP4: Hopperpop eșuează pe vectorii Vallado -> Vallado 2020 vendorizat, verificat (0,12 mm)
+- [x] Test nativ g++ comparat cu referința Python (matematică, parser, 5 scenarii complete)
+- [x] `src/`: motoare (AccelStepper, nucleul 1), MPU6050 + filtru complementar,
+      OLED (U8g2), LCD 2004 cu diacritice, encoder, butoane, E-STOP + releu, LED-uri, buzzer
+- [x] WiFi, NTP, descărcare TLE cu rezervă, protocol serial JSON
+- [x] Mod SIMULATION pentru limitatoare
+- [x] Compilare PlatformIO fără warning-uri, raport flash/RAM
+- [x] Binarul real rulat în QEMU Espressif (tools/qemu_smoke.py)
 
 ## Etapa 3 - Circuit Wokwi
 - [ ] `diagram.json` complet, grupat pe funcții, fire colorate
