@@ -9,11 +9,11 @@ Fiecare etapă se încheie cu verificare prin rulare și cu un commit.
 - [x] Plan, structură repo, .gitignore
 
 ## Etapa 1 - Nucleul matematic Python (referința)
-- [ ] `polaris/geometry.py`: ENU, Rz·Ry·Rx, ENU -> vehicul, az/el piedestal
-- [ ] `polaris/tracking.py`: keyhole, limită de viteză, alegerea sensului (cablu ±270°)
-- [ ] `polaris/orbit.py`: SGP4 (Vallado, WGS72), TEME -> ECEF -> ENU, pasaje AOS/max/LOS
-- [ ] `polaris/protocol.py`: format JSON telemetrie/evenimente, parsare comenzi
-- [ ] pytest pentru toate de mai sus, inclusiv comparație cu skyfield (< 0,1°)
+- [x] `polaris_gs/core/geometry.py`: ENU, Rz·Ry·Rx, ENU -> vehicul, az/el piedestal
+- [x] `polaris_gs/core/tracking.py`: keyhole, limită de viteză, alegerea sensului (cablu ±270°)
+- [x] `polaris_gs/core/orbit.py`: SGP4 (Vallado, WGS72), TEME -> ECEF -> ENU, pasaje AOS/max/LOS
+- [x] `polaris_gs/core/protocol.py`: format JSON telemetrie/evenimente, parsare comenzi
+- [x] pytest pentru toate de mai sus, inclusiv comparație cu skyfield (< 0,1°)
 
 ## Etapa 2 - Firmware ESP32
 - [ ] `lib/polaris_core`: aceeași matematică în C++ (fără Arduino.h)
