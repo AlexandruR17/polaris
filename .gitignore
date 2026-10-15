@@ -1,5 +1,7 @@
 .pio/
-.vscode/
+.vscode/*
+!.vscode/tasks.json
+!.vscode/extensions.json
 __pycache__/
 *.pyc
 .pytest_cache/

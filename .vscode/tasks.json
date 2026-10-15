@@ -1,0 +1,64 @@
+{
+  // POLARIS: Terminal > Run Task... (or Ctrl+Shift+B for firmware + dashboard on Wokwi)
+  "version": "2.0.0",
+  "options": {
+    "cwd": "${workspaceFolder}",
+    "shell": { "executable": "bash", "args": ["-c"] }
+  },
+  "windows": {
+    "options": {
+      "cwd": "${workspaceFolder}",
+      "shell": { "executable": "powershell.exe", "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command"] }
+    }
+  },
+  "tasks": [
+    {
+      "label": "POLARIS: instalare dashboard",
+      "detail": "Mediu Python în ground_station/.venv și pachetele dashboard-ului (o singură dată)",
+      "type": "shell",
+      "command": "test -d ground_station/.venv || python3 -m venv ground_station/.venv; ground_station/.venv/bin/python -m pip install -e ground_station",
+      "windows": {
+        "command": "if (-not (Test-Path ground_station\\.venv)) { py -3 -m venv ground_station\\.venv }; ground_station\\.venv\\Scripts\\python.exe -m pip install -e ground_station"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "POLARIS: compilare firmware (Wokwi)",
+      "detail": "pio run -e esp32dev_sim -> firmware/.pio/build/esp32dev_sim/firmware.factory.bin",
+      "type": "shell",
+      "command": "~/.platformio/penv/bin/pio run -d firmware -e esp32dev_sim",
+      "windows": {
+        "command": "& \"$env:USERPROFILE\\.platformio\\penv\\Scripts\\pio.exe\" run -d firmware -e esp32dev_sim"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "POLARIS: dashboard + Wokwi",
+      "detail": "Pagina web http://localhost:8080 legată la rfc2217://localhost:4000 (se reconectează singură)",
+      "type": "shell",
+      "command": "ground_station/.venv/bin/python -m polaris_gs --link rfc2217://localhost:4000",
+      "windows": {
+        "command": "ground_station\\.venv\\Scripts\\python.exe -m polaris_gs --link rfc2217://localhost:4000"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "POLARIS: dashboard (simulare internă)",
+      "detail": "Pagina web http://localhost:8080 cu copia Python a firmware-ului, fără Wokwi",
+      "type": "shell",
+      "command": "ground_station/.venv/bin/python -m polaris_gs",
+      "windows": {
+        "command": "ground_station\\.venv\\Scripts\\python.exe -m polaris_gs"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "POLARIS: firmware + dashboard (Wokwi)",
+      "detail": "Compilează firmware-ul, apoi pornește dashboard-ul; pornește Wokwi cu F1 > Wokwi: Start Simulator",
+      "dependsOrder": "sequence",
+      "dependsOn": ["POLARIS: compilare firmware (Wokwi)", "POLARIS: dashboard + Wokwi"],
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": []
+    }
+  ]
+}

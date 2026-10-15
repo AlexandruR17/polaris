@@ -210,6 +210,20 @@ cuplu.
    Rezultă `.pio/build/esp32dev_sim/firmware.factory.bin`, pe care îl citește `wokwi.toml`.
 4. F1 → **„Wokwi: Start Simulator”**. Se deschide circuitul și începe simularea.
 
+### Varianta A, totul din VS Code cu task-urile proiectului
+
+Deschideți tot folderul `polaris` în VS Code (`code C:\polaris`). `.vscode/tasks.json` are
+task-uri gata făcute (Terminal → Run Task…); VS Code recomandă și cele două extensii necesare.
+
+1. O singură dată: **Run Task → „POLARIS: instalare dashboard”** (mediul Python al paginii web).
+2. O singură dată: F1 → **„Wokwi: Select Config File”** → `firmware/wokwi.toml`.
+3. De fiecare dată: **Ctrl+Shift+B** („POLARIS: firmware + dashboard (Wokwi)”): compilează
+   firmware-ul, apoi pornește pagina web la http://localhost:8080, care așteaptă Wokwi.
+4. F1 → **„Wokwi: Start Simulator”**. Pagina se conectează singură în cel mult 2 secunde.
+
+Alte task-uri: „POLARIS: dashboard (simulare internă)” (pagina fără Wokwi) și
+„POLARIS: compilare firmware (Wokwi)”.
+
 ### Varianta B: în browser, pe wokwi.com
 
 1. Generați un folder plat cu toate sursele:

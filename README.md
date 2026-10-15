@@ -213,6 +213,20 @@ finer than needed; the gearbox is chosen mainly for torque.
    This produces `.pio/build/esp32dev_sim/firmware.factory.bin`, which `wokwi.toml` points to.
 4. F1 → **"Wokwi: Start Simulator"**. The circuit opens and the simulation starts.
 
+### Option A, everything from VS Code with the project tasks
+
+Open the whole `polaris` folder in VS Code (`code C:\polaris`). `.vscode/tasks.json` has ready
+tasks (Terminal → Run Task…); VS Code also recommends the two extensions it needs.
+
+1. Once: **Run Task → "POLARIS: instalare dashboard"** (Python environment for the web page).
+2. Once: F1 → **"Wokwi: Select Config File"** → `firmware/wokwi.toml`.
+3. Every time: **Ctrl+Shift+B** ("POLARIS: firmware + dashboard (Wokwi)"): builds the
+   firmware, then starts the web page on http://localhost:8080, which waits for Wokwi.
+4. F1 → **"Wokwi: Start Simulator"**. The page connects by itself within 2 seconds.
+
+Other tasks: "POLARIS: dashboard (simulare internă)" (the page without Wokwi) and
+"POLARIS: compilare firmware (Wokwi)".
+
 ### Option B: in the browser, on wokwi.com
 
 1. Generate a flat folder with all the sources:
