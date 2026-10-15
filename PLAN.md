@@ -48,4 +48,4 @@ Fiecare etapă se încheie cu verificare prin rulare și cu un commit.
 - [x] Listă de componente cu prețuri orientative
 
 ## Etapa 7 - README
-- [ ] Toate cele 10 secțiuni cerute
+- [x] Toate cele 10 secțiuni cerute
