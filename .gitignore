@@ -9,3 +9,4 @@ build/
 !docs/**
 tools/wokwi/.cache/
 !docs/results/experiments.sqlite
+*.egg-info/
