@@ -65,7 +65,7 @@ the vehicle frame, motion planning and safety.
 ```
            WiFi (Wokwi-GUEST)                       serial JSON 115200
   NTP ──────────┐   CelesTrak TLE                  ┌───────────────────────────────┐
-                ▼        ▼                         │  POLARIS Ground Station (PC)  │
+                ▼        ▼                         │  POLARIS Ground Station (web) │
         ┌──────────────────────────┐   telemetry   │  3D globe, sky plot, 3D       │
         │ ESP32 DevKit             │ ─────────────►│  vehicle, charts, pass table, │
         │  core 0: control 50 Hz   │   events      │  log, skyfield cross-check,   │
@@ -96,15 +96,17 @@ polaris/
 │   │                              pc_filter, pc_protocol, pc_controller, pc_config
 │   ├── lib/sgp4_vallado/          SGP4 Vallado 2020 (reference implementation)
 │   └── test_native/               g++ test of the logic, state machine scenarios
-├── ground_station/                PySide6 dashboard + Python copy of the firmware
+├── ground_station/                web dashboard (Python server + page) + Python copy of the firmware
 │   ├── polaris_gs/core/           geometry, orbit, tracking, protocol, fallback TLEs
 │   ├── polaris_gs/sim/            controller.py (firmware copy), runner.py
-│   ├── polaris_gs/ui/             globe, sky plot, 3D vehicle, charts, main window
-│   └── tests/                     pytest (85 tests)
+│   ├── polaris_gs/server.py       aiohttp web server, WebSocket to the page
+│   ├── polaris_gs/hub.py          link, telemetry history, SQLite, skyfield, vehicle stream
+│   ├── polaris_gs/web/            the page: globe, sky plot, 3D vehicle, charts (three.js, uPlot)
+│   └── tests/                     pytest (89 tests)
 ├── tools/
 │   ├── wokwi/                     generate, check and render diagram.json; wokwi.com bundle
 │   ├── experiments.py             the experiments in section 8
-│   ├── screenshots.py             dashboard screenshots
+│   ├── screenshots.py             dashboard screenshots (headless Chromium)
 │   ├── qemu_smoke.py              runs the real ESP32 binary in QEMU
 │   └── schematic.py               electrical schematic for the physical build
 └── docs/
@@ -250,8 +252,14 @@ Keyboard shortcuts work after clicking on the circuit area.
 
 ## 5. Wokwi → dashboard link
 
+The dashboard ("POLARIS Ground Station") is a **web page**. A small Python server
+(`python -m polaris_gs`) talks to the controller and serves the page on
+**http://localhost:8080**; the browser opens by itself. The server is needed because a browser
+cannot open the Wokwi RFC2217 port or a COM port on its own; it also keeps the SQLite results and
+runs the skyfield cross-check.
+
 `wokwi.toml` contains `rfc2217ServerPort = 4000`. While the simulation runs in VS Code, the
-ESP32 serial port is available on `localhost:4000`.
+ESP32 serial port is available on `localhost:4000`:
 
 ```
 cd ground_station
@@ -260,24 +268,37 @@ python -m polaris_gs --link rfc2217://localhost:4000
 ```
 
 For a real ESP32 board: `python -m polaris_gs --link COM3` (Windows) or
-`--link /dev/ttyUSB0` (Linux).
+`--link /dev/ttyUSB0` (Linux). The link can also be changed from the page ("Legătură" panel).
+Other options: `--port 8080` (web port), `--host 0.0.0.0` (open the page from a phone on the same
+network), `--no-browser`, `--db <file.sqlite>`.
 
-What the dashboard ("POLARIS Ground Station") shows:
+```
+ Wokwi / ESP32 ──serial JSON──► polaris_gs server (Python) ──WebSocket──► browser page
+                ◄──commands───  link, SQLite, skyfield      ◄──buttons───  three.js, uPlot
+```
 
-- **3D globe**: the Earth, the orbit, the ground track, the visibility cone and the satellite.
-- **Sky plot**: the pass track, the satellite position (blue) and where the antenna points
-  (orange).
-- **3D vehicle**: the vehicle tilted by roll, pitch and yaw, with the antenna turned exactly like
-  the motors. The orange line is the antenna axis and the blue line the true direction to the
-  satellite; when they overlap, tracking is good.
-- **Charts**: azimuth, elevation and pointing error over time.
-- **Table of upcoming passes**.
-- **Controls**: satellite, mode, warp, compensation on/off, vehicle profile, JOG, HOME, STOW, ACK.
+What the page shows:
+
+- **3D globe** (three.js): the Earth, the orbit, the ground track, the visibility cone and the
+  satellite. Drag to rotate, scroll to zoom.
+- **Sky plot**: the pass track, the satellite position (blue) and where the antenna really points
+  (orange cross).
+- **3D vehicle** (three.js): the vehicle tilted by roll, pitch and yaw, with the antenna turned
+  exactly like the motors. The orange line is the antenna axis and the blue line the true
+  direction to the satellite; when they overlap, tracking is good.
+- **Charts** (uPlot), last 2 minutes: pointing error, axis speeds, vehicle tilt.
+- **Upcoming passes**, with the rise time cross-checked against skyfield (Δ sky), and a
+  **"Rezultate SQLite"** tab with the saved passes.
+- **Controls**: link, satellite, mode, warp, HOME, STOW, ACK, vehicle profile, compensation
+  on/off, JOG, a free serial command field, and (simulation only) E-STOP and limit switch fault.
 - **Event log**.
-- **skyfield cross-check**: the dashboard independently recomputes the satellite position with
-  skyfield and shows the difference to the firmware (≈ 0.05°, limited by telemetry rounding).
-- At every LOS the pass result is saved to **SQLite**, with or without compensation, so they can
-  be compared.
+- **skyfield cross-check** in the header: the server independently recomputes the satellite
+  position with skyfield and shows the difference to the firmware (≈ 0.05°, limited by telemetry
+  rounding).
+- At every LOS the pass result is saved to **SQLite** (`~/.polaris/polaris.sqlite`), with or
+  without compensation, so they can be compared.
+
+The page also works on a phone or tablet: the panels stack in one column.
 
 The vehicle profile ("Staționar" = stationary, "Drum denivelat" = bumpy road, "Viraj" = turn,
 "Pantă" = slope) sends `VEH` commands 20 times per second, as if the vehicle were moving. This
@@ -288,17 +309,19 @@ tests the compensation without moving the MPU6050 sliders by hand.
 ```
 cd ground_station
 pip install -e ".[dev]"
-python -m polaris_gs                 # internal simulation
+python -m polaris_gs                 # internal simulation, opens http://localhost:8080
 python -m polaris_gs --online-tle    # internal simulation, TLE downloaded from CelesTrak
 ```
 
-The `sim` link runs the **Python copy of the firmware** in-process
+The `sim` link runs the **Python copy of the firmware** in the server
 (`polaris_gs/sim/controller.py`): same states, same constants, same SGP4, same JSON messages.
-The motors are modeled with the AccelStepper acceleration profile. The whole dashboard works the
-same way. In `sim` mode the "E-STOP (simulare)" and "Injectează limitator AZ" (inject AZ limit)
+The motors are modeled with the AccelStepper acceleration profile. The whole page works the same
+way. In `sim` mode the "E-STOP (simulare)" and "Injectează limitator AZ" (inject AZ limit)
 buttons are also enabled.
 
-![Dashboard after a pass](docs/img/dashboard_after_pass.png)
+![Dashboard after a pass, with the saved result](docs/img/dashboard_after_pass.png)
+
+<img src="docs/img/dashboard_phone.png" alt="Dashboard on a phone" width="260">
 
 ## 7. The math
 
@@ -405,20 +428,20 @@ Experiments A2/A3/A6 show exactly this (section 8).
 | C++ vs Python math (ENU → vehicle, roll/pitch, GMST, wrap, rate limiting) | parity test, 300 random cases | difference < 10⁻⁹ ° |
 | C++ vs Python command parser | the same 29 lines, including invalid ones | same responses and errors |
 | C++ vs Python state machine | 5 scenarios (demo with tilt, keyhole, safety, homing timeout, manual GEO) | same event sequence and telemetry |
-| Unit tests | `pytest` (85 tests) | all pass |
+| Unit tests | `pytest` (89 tests, including the web server and WebSocket protocol) | all pass |
 | ESP32 firmware | `pio run`, all 3 envs | 0 warnings |
 | Real ESP32 binary | Espressif QEMU (`tools/qemu_smoke.py`), commands over UART | BOOT → fallback TLE → HOMING → HOME_OK → MANUAL → JOG → SAT:43700 → AUTO → ACQUIRE → TRACK → VEH → STOW → HOME |
 | Wokwi circuit | official `@wokwi/diagram-lint` linter + `check_pins.py` | 0 errors, 0 warnings; 23 pins, all matching `pins.h` |
-| Dashboard | screenshots under Xvfb, checked visually | `docs/img/` |
+| Web dashboard | `tools/screenshots.py` drives the page in headless Chromium (boot, DEMO, TRACK, LOS, phone width), fails on any JavaScript error; screenshots checked visually | `docs/img/` |
 
 Commands:
 
 ```
-cd ground_station && pytest                       # 85 tests
+cd ground_station && pytest                       # 89 tests
 make -C firmware/test_native                      # native g++ test (-Wall -Wextra -Werror)
 cd firmware && pio run -e esp32dev_sim            # build for Wokwi
 python tools/experiments.py                       # regenerates docs/results
-xvfb-run -a python tools/screenshots.py docs/img  # screenshots
+python tools/screenshots.py docs/img              # screenshots (needs: playwright install chromium)
 ```
 
 **Memory (esp32dev_sim):** RAM 25.5% (83,396 B of 327,680 B), Flash 38.5%
@@ -539,3 +562,5 @@ Differences between the Wokwi circuit and the physical one (Wokwi doesn't have e
 - **Libraries**: AccelStepper, U8g2, LiquidCrystal_I2C, Adafruit MPU6050 (with Adafruit Unified
   Sensor and BusIO) and SGP4 Vallado (bundled in `lib/sgp4_vallado`, license in the same folder).
 - Globe coastlines: Natural Earth 1:110m (public domain).
+- Web page libraries, copied into `ground_station/polaris_gs/web/vendor` so the page works offline:
+  three.js 0.170.0 (MIT), uPlot 1.6.31 (MIT), Material Design Icons via @mdi/js 7.4.47 (Pictogrammers Free License, icons under Apache 2.0).

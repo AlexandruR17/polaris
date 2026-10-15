@@ -36,7 +36,12 @@ Fiecare etapă se încheie cu verificare prin rulare și cu un commit.
 - [x] Legătură rfc2217 / serial / simulare internă (copia firmware-ului)
 - [x] Glob 3D, harta cerului, model 3D vehicul, grafice, pasaje, comenzi, jurnal
 - [x] Verificare încrucișată skyfield, SQLite
-- [x] Capturi verificate vizual (sub Xvfb: platforma offscreen nu are OpenGL)
+- [x] Capturi verificate vizual
+
+## Etapa 8 - Dashboard web în loc de PySide6
+- [x] Server aiohttp + WebSocket, logica stației separată de interfață (hub.py)
+- [x] Pagina: glob și vehicul 3D (three.js), cerul polar (canvas), grafice (uPlot), iconițe MDI
+- [x] Teste pentru server și protocol, capturi din Chromium headless
 
 ## Etapa 5 - Experimente
 - [x] Pasaj ISS în DEMO x10: staționar, drum denivelat cu/fără compensare, pantă, accelerație x3

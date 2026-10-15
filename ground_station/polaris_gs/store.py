@@ -4,6 +4,7 @@ import json
 import math
 import pathlib
 import sqlite3
+import threading
 import time
 
 from .core import geometry as G
@@ -77,10 +78,17 @@ class ResultsDB:
     def __init__(self, path):
         self.path = pathlib.Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        self.db = sqlite3.connect(str(self.path))
-        self.db.executescript(SCHEMA)
+        # the web server saves from the link thread and reads from the page thread
+        self.db = sqlite3.connect(str(self.path), check_same_thread=False)
+        self.lock = threading.Lock()
+        with self.lock:
+            self.db.executescript(SCHEMA)
 
     def save_pass(self, ev, link, vehicle):
+        with self.lock:
+            self._save_pass(ev, link, vehicle)
+
+    def _save_pass(self, ev, link, vehicle):
         self.db.execute(
             "INSERT INTO passes (saved_utc, link, sat, los_utc, comp, warp, vehicle, max_err, rms_err, n)"
             " VALUES (?,?,?,?,?,?,?,?,?,?)",
@@ -92,11 +100,16 @@ class ResultsDB:
         extra = kw.pop("extra", None)
         cols = ["saved_utc"] + list(kw) + ["extra"]
         vals = [P.iso_utc(time.time())] + list(kw.values()) + [json.dumps(extra) if extra else None]
+        with self.lock:
+            self._insert(cols, vals)
+
+    def _insert(self, cols, vals):
         self.db.execute(f"INSERT INTO experiments ({','.join(cols)}) VALUES ({','.join('?' * len(cols))})",
                         vals)
         self.db.commit()
 
     def passes(self, limit=50):
-        cur = self.db.execute("SELECT saved_utc, link, sat, los_utc, comp, warp, vehicle, max_err, rms_err, n"
-                              " FROM passes ORDER BY id DESC LIMIT ?", (limit,))
-        return cur.fetchall()
+        with self.lock:
+            cur = self.db.execute("SELECT saved_utc, link, sat, los_utc, comp, warp, vehicle, max_err, rms_err, n"
+                                  " FROM passes ORDER BY id DESC LIMIT ?", (limit,))
+            return cur.fetchall()

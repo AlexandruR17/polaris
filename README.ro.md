@@ -62,7 +62,7 @@ coordonate în cadrul vehiculului, planificarea mișcării și siguranță.
 ```
            WiFi (Wokwi-GUEST)                       serial JSON 115200
   NTP ──────────┐   CelesTrak TLE                  ┌───────────────────────────────┐
-                ▼        ▼                         │  POLARIS Ground Station (PC)  │
+                ▼        ▼                         │  POLARIS Ground Station (web) │
         ┌──────────────────────────┐   telemetrie  │  glob 3D, cer polar, vehicul  │
         │ ESP32 DevKit             │ ─────────────►│  3D, grafice, tabel pasaje,   │
         │  core 0: control 50 Hz   │   evenimente  │  jurnal, verificare skyfield, │
@@ -92,15 +92,17 @@ polaris/
 │   │                              pc_filter, pc_protocol, pc_controller, pc_config
 │   ├── lib/sgp4_vallado/          SGP4 Vallado 2020 (sursa de referință)
 │   └── test_native/               test g++ al logicii, scenarii de stări
-├── ground_station/                dashboard PySide6 + copia Python a firmware-ului
+├── ground_station/                dashboard web (server Python + pagină) + copia Python a firmware-ului
 │   ├── polaris_gs/core/           geometrie, orbită, urmărire, protocol, TLE de rezervă
 │   ├── polaris_gs/sim/            controller.py (copia firmware-ului), runner.py
-│   ├── polaris_gs/ui/             glob, cer polar, vehicul 3D, grafice, fereastra principală
-│   └── tests/                     pytest (85 de teste)
+│   ├── polaris_gs/server.py       server web aiohttp, WebSocket spre pagină
+│   ├── polaris_gs/hub.py          legătură, istoric telemetrie, SQLite, skyfield, mișcare vehicul
+│   ├── polaris_gs/web/            pagina: glob, cer polar, vehicul 3D, grafice (three.js, uPlot)
+│   └── tests/                     pytest (89 de teste)
 ├── tools/
 │   ├── wokwi/                     generare, verificare și randare diagram.json; pachet wokwi.com
 │   ├── experiments.py             experimentele din secțiunea 8
-│   ├── screenshots.py             capturile dashboard-ului
+│   ├── screenshots.py             capturile dashboard-ului (Chromium headless)
 │   ├── qemu_smoke.py              rulează binarul real ESP32 în QEMU
 │   └── schematic.py               schema electrică pentru montajul fizic
 └── docs/
@@ -248,8 +250,14 @@ Tastele scurte funcționează după un clic pe zona circuitului.
 
 ## 5. Legătura Wokwi → dashboard
 
+Dashboard-ul („POLARIS Ground Station”) este o **pagină web**. Un server mic în Python
+(`python -m polaris_gs`) vorbește cu controllerul și servește pagina la
+**http://localhost:8080**; browserul se deschide singur. Serverul e necesar pentru că browserul
+nu poate deschide singur portul RFC2217 al Wokwi sau un port COM. Tot el păstrează rezultatele în
+SQLite și face verificarea cu skyfield.
+
 `wokwi.toml` conține `rfc2217ServerPort = 4000`. Cât timp simularea rulează în VS Code, portul
-serial al ESP32 este disponibil pe `localhost:4000`.
+serial al ESP32 este disponibil pe `localhost:4000`:
 
 ```
 cd ground_station
@@ -258,24 +266,38 @@ python -m polaris_gs --link rfc2217://localhost:4000
 ```
 
 Pentru o placă ESP32 reală: `python -m polaris_gs --link COM3` (Windows) sau
-`--link /dev/ttyUSB0` (Linux).
+`--link /dev/ttyUSB0` (Linux). Legătura se poate schimba și din pagină (panoul „Legătură”).
+Alte opțiuni: `--port 8080` (portul web), `--host 0.0.0.0` (pagina deschisă de pe telefon, din
+aceeași rețea), `--no-browser`, `--db <fișier.sqlite>`.
 
-Ce arată dashboard-ul („POLARIS Ground Station”):
+```
+ Wokwi / ESP32 ──JSON serial──► server polaris_gs (Python) ──WebSocket──► pagina din browser
+                ◄──comenzi────  legătură, SQLite, skyfield  ◄──butoane───  three.js, uPlot
+```
 
-- **Glob 3D**: Pământul, orbita, urma la sol, conul de vizibilitate și satelitul.
+Ce arată pagina:
+
+- **Glob 3D** (three.js): Pământul, orbita, urma la sol, conul de vizibilitate și satelitul.
+  Se rotește prin tragere cu mouse-ul, rotița face zoom.
 - **Cerul polar**: traiectoria pasajului, poziția satelitului (albastru) și unde privește antena
-  (portocaliu).
-- **Vehicul 3D**: vehiculul înclinat după roll, pitch și yaw, cu antena rotită exact ca motoarele.
-  Linia portocalie arată axa antenei, iar linia albastră direcția reală spre satelit; când se
-  suprapun, urmărirea e bună.
-- **Grafice**: azimut, elevație și eroarea de pointare în timp.
-- **Tabelul pasajelor** următoare.
-- **Controale**: satelit, mod, warp, compensare on/off, profil vehicul, JOG, HOME, STOW, ACK.
+  în realitate (crucea portocalie).
+- **Vehicul 3D** (three.js): vehiculul înclinat după roll, pitch și yaw, cu antena rotită exact ca
+  motoarele. Linia portocalie arată axa antenei, iar linia albastră direcția reală spre satelit;
+  când se suprapun, urmărirea e bună.
+- **Grafice** (uPlot), ultimele 2 minute: eroarea de pointare, viteza axelor, înclinarea
+  vehiculului.
+- **Pasajele următoare**, cu ora de răsărire verificată cu skyfield (Δ sky), și tab-ul
+  **„Rezultate SQLite”** cu pasajele salvate.
+- **Controale**: legătură, satelit, mod, warp, HOME, STOW, ACK, profil vehicul, compensare
+  on/off, JOG, un câmp pentru orice comandă serială și (doar în simulare) E-STOP și defect de
+  limitator.
 - **Jurnalul de evenimente**.
-- **Verificare skyfield**: dashboard-ul recalculează independent poziția satelitului cu skyfield
-  și afișează diferența față de firmware (≈ 0,05°, cât permite rotunjirea telemetriei).
-- La fiecare LOS, rezultatul pasajului se salvează în **SQLite**, cu sau fără compensare, ca să
-  poată fi comparate.
+- **Verificare skyfield** în antet: serverul recalculează independent poziția satelitului cu
+  skyfield și afișează diferența față de firmware (≈ 0,05°, cât permite rotunjirea telemetriei).
+- La fiecare LOS, rezultatul pasajului se salvează în **SQLite** (`~/.polaris/polaris.sqlite`),
+  cu sau fără compensare, ca să poată fi comparate.
+
+Pagina merge și pe telefon sau tabletă: panourile se așază unul sub altul.
 
 Profilul de vehicul („staționar”, „drum denivelat”, „viraj”, „pantă”) trimite comenzi `VEH`
 de 20 de ori pe secundă, ca și cum vehiculul s-ar mișca. Astfel se poate testa compensarea fără
@@ -286,16 +308,18 @@ a muta manual glisoarele MPU6050.
 ```
 cd ground_station
 pip install -e ".[dev]"
-python -m polaris_gs                 # simulare internă
+python -m polaris_gs                 # simulare internă, deschide http://localhost:8080
 python -m polaris_gs --online-tle    # simulare internă, TLE descărcat de la CelesTrak
 ```
 
-Legătura `sim` rulează în proces **copia Python a firmware-ului** (`polaris_gs/sim/controller.py`):
+Legătura `sim` rulează în server **copia Python a firmware-ului** (`polaris_gs/sim/controller.py`):
 aceleași stări, aceleași constante, același SGP4, aceleași mesaje JSON. Motoarele sunt modelate
-cu profilul de accelerație al AccelStepper. Tot dashboard-ul funcționează identic. În modul
-`sim` sunt active și butoanele „E-STOP (simulare)” și „Injectează limitator AZ”.
+cu profilul de accelerație al AccelStepper. Toată pagina funcționează identic. În modul `sim`
+sunt active și butoanele „E-STOP (simulare)” și „Injectează limitator AZ”.
 
-![Dashboard după un pasaj](docs/img/dashboard_after_pass.png)
+![Dashboard după un pasaj, cu rezultatul salvat](docs/img/dashboard_after_pass.png)
+
+<img src="docs/img/dashboard_phone.png" alt="Dashboard pe telefon" width="260">
 
 ## 7. Matematica
 
@@ -400,20 +424,20 @@ simulat, componentele de 1,5° la 1,9 Hz pe roll și de 1,2° la 2,3 Hz pe pitch
 | Matematica C++ vs Python (ENU → vehicul, roll/pitch, GMST, wrap, limitare de viteză) | test de paritate, 300 de cazuri aleatoare | diferență < 10⁻⁹ ° |
 | Parserul de comenzi C++ vs Python | aceleași 29 de linii, inclusiv cele greșite | aceleași răspunsuri și erori |
 | Mașina de stări C++ vs Python | 5 scenarii (demo cu înclinare, keyhole, siguranță, homing expirat, GEO manual) | aceeași secvență de evenimente și telemetrie |
-| Teste unitare | `pytest` (85 de teste) | toate trec |
+| Teste unitare | `pytest` (89 de teste, inclusiv serverul web și protocolul WebSocket) | toate trec |
 | Firmware ESP32 | `pio run`, toate cele 3 medii | 0 avertismente |
 | Binarul real ESP32 | QEMU Espressif (`tools/qemu_smoke.py`), comenzi pe UART | BOOT → TLE de rezervă → HOMING → HOME_OK → MANUAL → JOG → SAT:43700 → AUTO → ACQUIRE → TRACK → VEH → STOW → HOME |
 | Circuitul Wokwi | linterul oficial `@wokwi/diagram-lint` + `check_pins.py` | 0 erori, 0 avertismente; 23 de pini, toți conform `pins.h` |
-| Dashboard | capturi sub Xvfb, verificate vizual | `docs/img/` |
+| Dashboard web | `tools/screenshots.py` folosește pagina într-un Chromium headless (pornire, DEMO, TRACK, LOS, lățime de telefon) și eșuează la orice eroare JavaScript; capturi verificate vizual | `docs/img/` |
 
 Comenzi:
 
 ```
-cd ground_station && pytest                       # 85 de teste
+cd ground_station && pytest                       # 89 de teste
 make -C firmware/test_native                      # testul nativ g++ (-Wall -Wextra -Werror)
 cd firmware && pio run -e esp32dev_sim            # build pentru Wokwi
 python tools/experiments.py                       # regenerează docs/results
-xvfb-run -a python tools/screenshots.py docs/img  # capturi
+python tools/screenshots.py docs/img              # capturi (necesită: playwright install chromium)
 ```
 
 **Memorie (esp32dev_sim):** RAM 25,5% (83 396 B din 327 680 B), Flash 38,5%
@@ -531,3 +555,6 @@ Diferențe între circuitul Wokwi și cel fizic (Wokwi nu are toate piesele):
 - **Biblioteci**: AccelStepper, U8g2, LiquidCrystal_I2C, Adafruit MPU6050 (cu Adafruit Unified
   Sensor și BusIO) și SGP4 Vallado (inclus în `lib/sgp4_vallado`, licența în același folder).
 - Conturul continentelor de pe glob: Natural Earth 1:110m (domeniu public).
+- Bibliotecile paginii web, copiate în `ground_station/polaris_gs/web/vendor` ca pagina să meargă
+  fără internet: three.js 0.170.0 (MIT), uPlot 1.6.31 (MIT), Material Design Icons prin @mdi/js
+  7.4.47 (Pictogrammers Free License, iconițele sub Apache 2.0).

@@ -1,14 +1,17 @@
-"""POLARIS Ground Station.
+"""POLARIS Ground Station (web page served on http://localhost:8080).
 
-python -m polaris_gs                       internal simulation (no Wokwi needed)
+python -m polaris_gs                                   internal simulation (no Wokwi needed)
 python -m polaris_gs --link rfc2217://localhost:4000   Wokwi for VS Code
-python -m polaris_gs --link COM3           real ESP32 on a serial port
+python -m polaris_gs --link COM3                       real ESP32 on a serial port
 """
 import argparse
 import pathlib
-import sys
+import threading
+import webbrowser
 
-from PySide6 import QtGui, QtWidgets
+from aiohttp import web
+
+from .server import create_app
 
 
 def main(argv=None):
@@ -18,20 +21,18 @@ def main(argv=None):
                     help="SQLite file for pass results")
     ap.add_argument("--online-tle", action="store_true",
                     help="simulation downloads TLEs from CelesTrak instead of the stored ones")
-    ap.add_argument("--size", default="1920x1080")
+    ap.add_argument("--host", default="127.0.0.1", help="use 0.0.0.0 to open it from other devices")
+    ap.add_argument("--port", type=int, default=8080)
+    ap.add_argument("--no-browser", action="store_true", help="do not open the browser")
     args = ap.parse_args(argv)
 
-    app = QtWidgets.QApplication(sys.argv[:1])
-    from .ui import theme
-    from .ui.main_window import MainWindow
-    app.setStyleSheet(theme.QSS)
-    app.setFont(QtGui.QFont(theme.FONT, 10))
-    w = MainWindow(args.link, args.db, args.online_tle)
-    wd, ht = (int(x) for x in args.size.split("x"))
-    w.resize(wd, ht)
-    w.show()
-    return app.exec()
+    url = f"http://{'localhost' if args.host in ('127.0.0.1', '0.0.0.0') else args.host}:{args.port}/"
+    print(f"POLARIS Ground Station: {url}  (Ctrl+C oprește serverul)")
+    if not args.no_browser:
+        threading.Timer(1.0, webbrowser.open, (url,)).start()
+    app = create_app(args.link, args.db, args.online_tle)
+    web.run_app(app, host=args.host, port=args.port, print=None)
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()

@@ -1,12 +1,18 @@
 [project]
 name = "polaris-gs"
 version = "1.0.0"
-description = "POLARIS Ground Station: dashboard and reference model for POLARIS SAT-1"
+description = "POLARIS Ground Station: web dashboard and reference model for POLARIS SAT-1"
 requires-python = ">=3.10"
-dependencies = ["PySide6>=6.5", "pyqtgraph>=0.13.3", "PyOpenGL>=3.1", "numpy>=1.24", "pyserial>=3.5", "skyfield>=1.46", "sgp4>=2.22", "qtawesome>=1.3"]
+dependencies = ["aiohttp>=3.9", "numpy>=1.24", "pyserial>=3.5", "skyfield>=1.46", "sgp4>=2.22"]
 
 [project.optional-dependencies]
-dev = ["pytest>=7", "schemdraw>=0.18", "matplotlib>=3.7"]
+dev = ["pytest>=7", "schemdraw>=0.18", "matplotlib>=3.7", "playwright>=1.40"]
+
+[tool.setuptools.packages.find]
+include = ["polaris_gs*"]
+
+[tool.setuptools.package-data]
+polaris_gs = ["web/*.html", "web/*.js", "web/*.css", "web/vendor/**/*", "assets/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
