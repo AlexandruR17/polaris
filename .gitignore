@@ -8,3 +8,4 @@ build/
 *.db
 !docs/**
 tools/wokwi/.cache/
+!docs/results/experiments.sqlite

@@ -39,8 +39,9 @@ Fiecare etapă se încheie cu verificare prin rulare și cu un commit.
 - [x] Capturi verificate vizual (sub Xvfb: platforma offscreen nu are OpenGL)
 
 ## Etapa 5 - Experimente
-- [ ] Pasaj ISS în DEMO: staționar, drum denivelat cu/fără compensare
-- [ ] Script care generează tabelele (Markdown) și graficele
+- [x] Pasaj ISS în DEMO x10: staționar, drum denivelat cu/fără compensare, pantă, accelerație x3
+- [x] Keyhole pe pasajul prin zenit (89,4°), cu/fără planificare anticipativă, x1 și x10
+- [x] tools/experiments.py generează tabelele (docs/results/experiments.md), CSV, grafice, SQLite
 
 ## Etapa 6 - Montaj fizic
 - [ ] Schemă electrică schemdraw (svg + png)

@@ -140,6 +140,7 @@ class Controller:
         self.imu_seen = False
         self.src = "NONE"
         self.comp = True
+        self.planner = True  # experiment switch, not in the firmware
         # look
         self.look = None
         self.look_t = 0.0
@@ -344,7 +345,8 @@ class Controller:
         req = T.max_rate(seq, dt)
         prof = T.rate_limit_fwd_bwd(seq, dt, vmax)
         self.plan_az = seq
-        self.plan_lead = [p - s for p, s in zip(prof, seq)]
+        # planner off (experiments only, the firmware always plans): no anticipation
+        self.plan_lead = [p - s for p, s in zip(prof, seq)] if self.planner else [0.0] * n
         self.plan_n = n
         self.plan_t0 = t0
         self.plan_dt = dt
