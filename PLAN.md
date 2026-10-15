@@ -33,10 +33,10 @@ Fiecare etapă se încheie cu verificare prin rulare și cu un commit.
 - [x] Randare a diagramei cu grafica oficială Wokwi (docs/img/wokwi_diagram.png)
 
 ## Etapa 4 - Dashboard „POLARIS Ground Station"
-- [ ] Legătură rfc2217 / serial / simulare internă (copia firmware-ului)
-- [ ] Glob 3D, harta cerului, model 3D vehicul, grafice, pasaje, comenzi, jurnal
-- [ ] Verificare încrucișată skyfield, SQLite
-- [ ] Capturi offscreen verificate vizual
+- [x] Legătură rfc2217 / serial / simulare internă (copia firmware-ului)
+- [x] Glob 3D, harta cerului, model 3D vehicul, grafice, pasaje, comenzi, jurnal
+- [x] Verificare încrucișată skyfield, SQLite
+- [x] Capturi verificate vizual (sub Xvfb: platforma offscreen nu are OpenGL)
 
 ## Etapa 5 - Experimente
 - [ ] Pasaj ISS în DEMO: staționar, drum denivelat cu/fără compensare
