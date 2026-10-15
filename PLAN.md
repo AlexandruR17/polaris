@@ -44,8 +44,8 @@ Fiecare etapă se încheie cu verificare prin rulare și cu un commit.
 - [x] tools/experiments.py generează tabelele (docs/results/experiments.md), CSV, grafice, SQLite
 
 ## Etapa 6 - Montaj fizic
-- [ ] Schemă electrică schemdraw (svg + png)
-- [ ] Listă de componente cu prețuri orientative
+- [x] Schemă electrică schemdraw (svg + png)
+- [x] Listă de componente cu prețuri orientative
 
 ## Etapa 7 - README
 - [ ] Toate cele 10 secțiuni cerute
