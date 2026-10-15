@@ -1,253 +1,257 @@
 # POLARIS SAT-1
 
-**Antenă de urmărire a sateliților, montată pe vehicul, cu compensarea înclinării.**
-Proiect la Sisteme Mecatronice Avansate.
+**English** · [Română](README.ro.md)
 
-![Circuitul Wokwi](docs/img/wokwi_diagram.png)
+**Vehicle-mounted satellite tracking antenna with tilt compensation.**
+Project for the Advanced Mechatronic Systems course (Sisteme Mecatronice Avansate).
 
-![POLARIS Ground Station în timpul unui pasaj ISS](docs/img/dashboard_track.png)
+![Wokwi circuit](docs/img/wokwi_diagram.png)
 
-Cuprins:
+![POLARIS Ground Station during an ISS pass](docs/img/dashboard_track.png)
 
-1. [Ce este](#1-ce-este)
-2. [Arhitectură și structura proiectului](#2-arhitectură-și-structura-proiectului)
-3. [Tabelul de pini](#3-tabelul-de-pini)
-4. [Demo în Wokwi, pas cu pas](#4-demo-în-wokwi-pas-cu-pas)
-5. [Legătura Wokwi → dashboard](#5-legătura-wokwi--dashboard)
-6. [Simulare fără Wokwi](#6-simulare-fără-wokwi)
-7. [Matematica](#7-matematica)
-8. [Verificare și rezultate](#8-verificare-și-rezultate)
-9. [Montaj fizic](#9-montaj-fizic)
-10. [Limitele simulării și rezolvarea lor pe hardware real](#10-limitele-simulării-și-rezolvarea-lor-pe-hardware-real)
+Contents:
+
+1. [What it is](#1-what-it-is)
+2. [Architecture and repository layout](#2-architecture-and-repository-layout)
+3. [Pin table](#3-pin-table)
+4. [Wokwi demo, step by step](#4-wokwi-demo-step-by-step)
+5. [Wokwi → dashboard link](#5-wokwi--dashboard-link)
+6. [Simulation without Wokwi](#6-simulation-without-wokwi)
+7. [The math](#7-the-math)
+8. [Verification and results](#8-verification-and-results)
+9. [Physical build](#9-physical-build)
+10. [Simulation limits and how to solve them on real hardware](#10-simulation-limits-and-how-to-solve-them-on-real-hardware)
+
+The user interface (LCD, OLED, dashboard) is in Romanian, as required by the course. Where this
+README quotes an on-screen text, the English meaning is given next to it.
 
 ---
 
-## 1. Ce este
+## 1. What it is
 
-POLARIS SAT-1 este un suport de antenă cu două axe (azimut și elevație), acționat de două motoare
-pas cu pas. Suportul stă pe un vehicul și ține antena îndreptată spre un satelit real:
+POLARIS SAT-1 is a two-axis (azimuth and elevation) antenna pedestal driven by two stepper
+motors. It sits on a vehicle and keeps the antenna pointed at a real satellite:
 
-- își ia ora exactă prin internet (NTP);
-- descarcă elementele orbitale (TLE) de la CelesTrak;
-- calculează cu modelul SGP4 unde se află satelitul văzut de la Politehnica București
-  (44,4386° N, 26,0494° E, 80 m);
-- măsoară cât de înclinat este vehiculul (accelerometrul MPU6050);
-- corectează comanda motoarelor astfel încât antena să rămână pe satelit chiar dacă vehiculul
-  e pe o pantă sau se clatină.
+- it gets the exact time over the internet (NTP);
+- it downloads the orbital elements (TLE) from CelesTrak;
+- it uses the SGP4 model to compute where the satellite is, as seen from Politehnica University
+  of Bucharest (44.4386° N, 26.0494° E, 80 m);
+- it measures how much the vehicle is tilted (MPU6050 accelerometer);
+- it corrects the motor commands so the antenna stays on the satellite even when the vehicle is
+  on a slope or rocking.
 
-Sateliți predefiniți: **ISS (25544)**, **NOAA 19 (33591)**, **NOAA 18 (28654)** și un satelit
-geostaționar, **Es'hail 2 / QO-100 (43700)**, folosit de radioamatorii din Europa. Se poate cere
-orice alt număr NORAD prin comanda `SAT:<id>`.
+Predefined satellites: **ISS (25544)**, **NOAA 19 (33591)**, **NOAA 18 (28654)** and a
+geostationary satellite, **Es'hail 2 / QO-100 (43700)**, used by radio amateurs in Europe. Any
+other NORAD number can be requested with the `SAT:<id>` command.
 
-**Numele.** Polaris este Steaua Polară, punctul fix după care s-a orientat navigația timp de
-secole. Antena face același lucru în sens invers: rămâne fixată pe o țintă în timp ce suportul
-ei se mișcă. SAT-1 înseamnă primul prototip al sistemului de urmărire a sateliților.
+**The name.** Polaris is the North Star, the fixed point navigators steered by for centuries.
+The antenna does the same thing the other way round: it stays locked on a target while its own
+base moves. SAT-1 means the first prototype of the satellite tracking system.
 
-**Echivalente reale.**
+**Real-world equivalents.**
 
-- Antenele SATCOM-on-the-move (COTM) de pe vehiculele militare și de intervenție, de exemplu
-  terminalele Ku/Ka de la Cobham, Gilat sau Hughes.
-- Antenele maritime stabilizate VSAT (Intellian, KVH), care compensează ruliul și tangajul navei.
-- Stațiile de sol mobile pentru sateliți meteo (NOAA APT, Meteor LRPT), folosite pe teren.
-- Rotoarele de radioamator Yaesu G-5500 și SPID, comandate de Gpredict sau SatPC32. Acestea sunt
-  fixe, fără compensare.
+- SATCOM-on-the-move (COTM) antennas on military and emergency vehicles, for example the Ku/Ka
+  terminals from Cobham, Gilat or Hughes.
+- Stabilized maritime VSAT antennas (Intellian, KVH), which compensate the ship's roll and pitch.
+- Mobile ground stations for weather satellites (NOAA APT, Meteor LRPT) used in the field.
+- Amateur radio rotators such as the Yaesu G-5500 and SPID, driven by Gpredict or SatPC32. These
+  are fixed, with no compensation.
 
-POLARIS reproduce, la scară de laborator, aceeași buclă: predicție orbitală, transformare de
-coordonate în cadrul vehiculului, planificarea mișcării și siguranță.
+POLARIS reproduces the same loop at lab scale: orbit prediction, coordinate transformation into
+the vehicle frame, motion planning and safety.
 
-## 2. Arhitectură și structura proiectului
+## 2. Architecture and repository layout
 
 ```
            WiFi (Wokwi-GUEST)                       serial JSON 115200
   NTP ──────────┐   CelesTrak TLE                  ┌───────────────────────────────┐
                 ▼        ▼                         │  POLARIS Ground Station (PC)  │
-        ┌──────────────────────────┐   telemetrie  │  glob 3D, cer polar, vehicul  │
-        │ ESP32 DevKit             │ ─────────────►│  3D, grafice, tabel pasaje,   │
-        │  core 0: control 50 Hz   │   evenimente  │  jurnal, verificare skyfield, │
-        │    SGP4 10 Hz, stări,    │ ◄──────────── │  rezultate în SQLite          │
-        │    compensare, siguranță │   comenzi     └───────────────────────────────┘
-        │  core 0: rețea (TLE)     │
-        │  core 1: pași motoare    │──► 2× A4988 ──► 2× NEMA 17 + reductor 5:1
+        ┌──────────────────────────┐   telemetry   │  3D globe, sky plot, 3D       │
+        │ ESP32 DevKit             │ ─────────────►│  vehicle, charts, pass table, │
+        │  core 0: control 50 Hz   │   events      │  log, skyfield cross-check,   │
+        │    SGP4 10 Hz, states,   │ ◄──────────── │  results in SQLite            │
+        │    compensation, safety  │   commands    └───────────────────────────────┘
+        │  core 0: network (TLE)   │
+        │  core 1: motor steps     │──► 2× A4988 ──► 2× NEMA 17 + 5:1 gearbox
         └──────────────────────────┘
-          ▲ MPU6050  ▲ limitatoare  ▲ butoane, encoder, pot.  ▼ OLED, LCD, LED-uri, buzzer
+          ▲ MPU6050  ▲ limit switches  ▲ buttons, encoder, pot.  ▼ OLED, LCD, LEDs, buzzer
 ```
 
-Ideea principală: **toată logica (orbită, geometrie, urmărire, stări, protocol) stă într-o
-bibliotecă C++ fără Arduino**, `firmware/lib/polaris_core`. Aceasta se compilează pentru ESP32,
-dar și nativ pe PC, pentru teste. O copie Python identică (`ground_station/polaris_gs/sim`) rulează
-în dashboard când nu există Wokwi. Un test compară cele două implementări pas cu pas.
+The key idea: **all the logic (orbit, geometry, tracking, states, protocol) lives in a C++
+library with no Arduino dependency**, `firmware/lib/polaris_core`. It compiles for the ESP32 and
+also natively on a PC, for tests. An identical Python copy (`ground_station/polaris_gs/sim`) runs
+inside the dashboard when Wokwi is not available. A test compares the two implementations step
+by step.
 
 ```
 polaris/
 ├── firmware/                      PlatformIO, ESP32
-│   ├── platformio.ini             medii: esp32dev_sim, esp32dev_hw, esp32dev_qemu
-│   ├── wokwi.toml, diagram.json   simularea Wokwi (portul RFC2217 4000)
-│   ├── include/pins.h             harta pinilor
-│   ├── src/main.cpp               task-uri FreeRTOS, motoare (AccelStepper), IMU
-│   ├── src/hmi.cpp                LCD, OLED, butoane, encoder, buzzer, LED-uri
-│   ├── src/net.cpp                WiFi, NTP, descărcarea TLE (HTTPS)
-│   ├── lib/polaris_core/          logica portabilă: pc_orbit, pc_geometry, pc_tracking,
+│   ├── platformio.ini             envs: esp32dev_sim, esp32dev_hw, esp32dev_qemu
+│   ├── wokwi.toml, diagram.json   Wokwi simulation (RFC2217 port 4000)
+│   ├── include/pins.h             pin map
+│   ├── src/main.cpp               FreeRTOS tasks, motors (AccelStepper), IMU
+│   ├── src/hmi.cpp                LCD, OLED, buttons, encoder, buzzer, LEDs
+│   ├── src/net.cpp                WiFi, NTP, TLE download (HTTPS)
+│   ├── lib/polaris_core/          portable logic: pc_orbit, pc_geometry, pc_tracking,
 │   │                              pc_filter, pc_protocol, pc_controller, pc_config
-│   ├── lib/sgp4_vallado/          SGP4 Vallado 2020 (sursa de referință)
-│   └── test_native/               test g++ al logicii, scenarii de stări
-├── ground_station/                dashboard PySide6 + copia Python a firmware-ului
-│   ├── polaris_gs/core/           geometrie, orbită, urmărire, protocol, TLE de rezervă
-│   ├── polaris_gs/sim/            controller.py (copia firmware-ului), runner.py
-│   ├── polaris_gs/ui/             glob, cer polar, vehicul 3D, grafice, fereastra principală
-│   └── tests/                     pytest (85 de teste)
+│   ├── lib/sgp4_vallado/          SGP4 Vallado 2020 (reference implementation)
+│   └── test_native/               g++ test of the logic, state machine scenarios
+├── ground_station/                PySide6 dashboard + Python copy of the firmware
+│   ├── polaris_gs/core/           geometry, orbit, tracking, protocol, fallback TLEs
+│   ├── polaris_gs/sim/            controller.py (firmware copy), runner.py
+│   ├── polaris_gs/ui/             globe, sky plot, 3D vehicle, charts, main window
+│   └── tests/                     pytest (85 tests)
 ├── tools/
-│   ├── wokwi/                     generare, verificare și randare diagram.json; pachet wokwi.com
-│   ├── experiments.py             experimentele din secțiunea 8
-│   ├── screenshots.py             capturile dashboard-ului
-│   ├── qemu_smoke.py              rulează binarul real ESP32 în QEMU
-│   └── schematic.py               schema electrică pentru montajul fizic
+│   ├── wokwi/                     generate, check and render diagram.json; wokwi.com bundle
+│   ├── experiments.py             the experiments in section 8
+│   ├── screenshots.py             dashboard screenshots
+│   ├── qemu_smoke.py              runs the real ESP32 binary in QEMU
+│   └── schematic.py               electrical schematic for the physical build
 └── docs/
-    ├── img/                       capturi
-    ├── results/                   tabele, CSV, grafice, SQLite
-    └── hardware/                  schema electrică (svg, png), lista de componente
+    ├── img/                       screenshots
+    ├── results/                   tables, CSV, plots, SQLite
+    └── hardware/                  schematic (svg, png), bill of materials
 ```
 
-**Stări** (fiecare schimbare trimite evenimentul `MODE` pe serial):
+**States** (every change sends a `MODE` event on the serial port):
 
-| Stare | Ce face |
+| State | What it does |
 |---|---|
-| BOOT | WiFi, NTP, TLE, ecranul de pornire cu versiunea |
-| HOMING | ambele axe caută limitatorul, apoi își fixează originea; peste 45 s → FAULT |
-| IDLE | stă pe loc, motoare active |
-| WAIT_AOS | a calculat următorul pasaj și așteaptă la azimutul de răsărire (sau în STOW) |
-| ACQUIRE | merge spre satelit; trece în TRACK când eroarea scade sub 1° |
-| TRACK | urmărește satelitul cât timp elevația > 5° |
-| STOW | poziție de parcare (azimut 0°, elevație 90°) |
-| MANUAL | encoderul mișcă axa aleasă, potențiometrul dă viteza |
-| DEMO | sare în timp la următorul pasaj bun și îl rulează accelerat x10, x30 sau x60 |
-| ESTOP | motoarele sunt oprite; ieșirea cere eliberarea butonului și confirmare (HOME sau `ACK`) |
-| FAULT | limitator atins în afara homing-ului sau homing expirat; ieșirea cere confirmare |
+| BOOT | WiFi, NTP, TLE, splash screen with the version |
+| HOMING | both axes seek their limit switch, then set their origin; over 45 s → FAULT |
+| IDLE | holds position, motors enabled |
+| WAIT_AOS | has computed the next pass and waits at the rise azimuth (or in STOW) |
+| ACQUIRE | slews to the satellite; switches to TRACK when the error drops below 1° |
+| TRACK | follows the satellite while its elevation is above 5° |
+| STOW | parking position (azimuth 0°, elevation 90°) |
+| MANUAL | the encoder moves the selected axis, the potentiometer sets the speed |
+| DEMO | jumps ahead in time to the next good pass and runs it at x10, x30 or x60 |
+| ESTOP | motors off; leaving it requires releasing the button and confirming (HOME or `ACK`) |
+| FAULT | limit switch hit outside homing, or homing timed out; leaving it requires confirmation |
 
-**Protocol serial** (115200, o linie JSON pe mesaj):
+**Serial protocol** (115200 baud, one JSON line per message):
 
 ```
-telemetrie, 10 Hz:
+telemetry, 10 Hz:
 {"t_utc":"2026-10-15T03:44:48.7Z","sat":25544,"sat_az":217.90,"sat_el":5.31,"range_km":1838.0,
  "cmd_az":217.90,"cmd_el":5.31,"ant_az":217.94,"ant_el":5.27,"roll":0.00,"pitch":0.00,"yaw":90.00,
  "err_deg":0.059,"mode":"TRACK","next_aos":"...","next_los":"...","max_el":42.9,"warp":30,
  "comp":1,"kh":0,"src":"NET","tle_age":60.0,"tle_fb":1,"axis":"AZ"}
-evenimente:
+events:
 {"ev":"BOOT"} {"ev":"MODE","from":..,"to":..} {"ev":"HOME_OK"} {"ev":"PASS",..} {"ev":"AOS",..}
 {"ev":"LOS","max_err":..,"rms_err":..,"n":..,"comp":..,"warp":..} {"ev":"KEYHOLE"} {"ev":"RATE_LIMIT"}
 {"ev":"WRAP"} {"ev":"ESTOP"} {"ev":"FAULT","reason":..} {"ev":"ACK"} {"ev":"CMD"} {"ev":"ERR"} {"ev":"INFO"}
-comenzi (text, o linie):
+commands (plain text, one line):
 SAT:25544   MODE:AUTO|MANUAL|DEMO|IDLE|STOW   WARP:10|30|60   VEH:roll,pitch,yaw   VEH:OFF
 JOG:AZ,5.0   HOME   STOW   ACK   COMP:0|1
 ```
 
-## 3. Tabelul de pini
+## 3. Pin table
 
-| Funcție | GPIO | Componentă | Observații |
+| Function | GPIO | Part | Notes |
 |---|---|---|---|
 | AZ DIR | 32 | A4988 #1 DIR | |
 | AZ STEP | 33 | A4988 #1 STEP | |
-| AZ ENABLE | 25 | A4988 #1 ENABLE | activ LOW |
+| AZ ENABLE | 25 | A4988 #1 ENABLE | active LOW |
 | EL DIR | 26 | A4988 #2 DIR | |
 | EL STEP | 27 | A4988 #2 STEP | |
-| EL ENABLE | 14 | A4988 #2 ENABLE | activ LOW |
-| MS1, MS2, MS3 | 3V3 | ambele drivere | 1/16 micropas, fixat din cablaj |
-| E-STOP | 12 | buton E-STOP | INPUT_PULLUP, apăsat = LOW, întrerupere pe front |
-| Releu | 13 | modul releu (VMOT) | HIGH = motoare alimentate |
-| Potențiometru | 36 (VP) | potențiometru | ADC1, viteza în MANUAL |
-| Encoder CLK | 39 (VN) | KY-040 CLK | numai intrare |
-| Encoder DT | 34 | KY-040 DT | numai intrare |
-| Encoder SW | 35 | KY-040 SW | numai intrare, pull-up extern 10 kΩ |
+| EL ENABLE | 14 | A4988 #2 ENABLE | active LOW |
+| MS1, MS2, MS3 | 3V3 | both drivers | 1/16 microstepping, fixed by wiring |
+| E-STOP | 12 | E-STOP button | INPUT_PULLUP, pressed = LOW, edge interrupt |
+| Relay | 13 | relay module (VMOT) | HIGH = motor power on |
+| Potentiometer | 36 (VP) | potentiometer | ADC1, MANUAL speed |
+| Encoder CLK | 39 (VN) | KY-040 CLK | input only |
+| Encoder DT | 34 | KY-040 DT | input only |
+| Encoder SW | 35 | KY-040 SW | input only, external 10 kΩ pull-up |
 | I2C SDA | 23 | MPU6050, OLED, LCD | |
 | I2C SCL | 22 | MPU6050, OLED, LCD | |
-| Limitator AZ | 21 | limitator NC la GND | pull-up intern, HIGH = atins sau fir rupt |
-| Limitator EL | 19 | limitator NC la GND | idem |
-| Buton MOD | 18 | buton | AUTO → MANUAL → DEMO → AUTO |
-| Buton HOME | 5 | buton | homing; în ESTOP/FAULT = confirmare |
-| Buton STOW | 17 | buton | parcare |
-| LED verde | 16 | LED + 220 Ω | TRACK (fix), ACQUIRE (clipește) |
-| LED galben | 4 | LED + 220 Ω | așteptare (fix), HOMING (clipește) |
-| LED roșu | 2 | LED + 220 Ω | ESTOP (fix), FAULT (clipește) |
-| Buzzer | 15 | buzzer | AOS, LOS, alarme |
+| AZ limit | 21 | NC limit switch to GND | internal pull-up, HIGH = hit or broken wire |
+| EL limit | 19 | NC limit switch to GND | same |
+| MODE button | 18 | button | AUTO → MANUAL → DEMO → AUTO |
+| HOME button | 5 | button | homing; in ESTOP/FAULT it confirms |
+| STOW button | 17 | button | parking |
+| Green LED | 16 | LED + 220 Ω | TRACK (steady), ACQUIRE (blinking) |
+| Yellow LED | 4 | LED + 220 Ω | waiting (steady), HOMING (blinking) |
+| Red LED | 2 | LED + 220 Ω | ESTOP (steady), FAULT (blinking) |
+| Buzzer | 15 | buzzer | AOS, LOS, alarms |
 
-Adrese I2C: MPU6050 0x68, OLED SSD1306 0x3C, LCD PCF8574 0x27.
+I2C addresses: MPU6050 0x68, SSD1306 OLED 0x3C, PCF8574 LCD 0x27.
 
-**Mecanica și rezoluția.** Motor de 200 pași/rotație × micropas 1/16 × reductor 5:1 =
-**16000 micropași pe rotația antenei**, adică **0,0225° pe micropas**. Fasciculul unei antene
-Yagi de 70 cm are 30-40°, iar al unei parabole de 1 m în banda L are aproximativ 13°. Rezoluția
-este deci de câteva sute de ori mai fină decât e nevoie; reductorul este ales mai ales pentru
-cuplu.
+**Mechanics and resolution.** 200 steps/rev motor × 1/16 microstepping × 5:1 gearbox =
+**16000 microsteps per antenna revolution**, i.e. **0.0225° per microstep**. A 70 cm Yagi has a
+30-40° beam, and a 1 m L-band dish about 13°. The resolution is therefore a few hundred times
+finer than needed; the gearbox is chosen mainly for torque.
 
-**Culorile firelor în Wokwi** (aceeași legendă apare și pe diagramă):
+**Wire colors in Wokwi** (the same legend is drawn on the diagram, in Romanian):
 
-| Culoare | Semnificație |
+| Color | Meaning |
 |---|---|
-| roșu | alimentare logică 3V3 |
-| roșu închis | alimentarea motoarelor, prin releu |
-| negru | masă (GND) |
-| portocaliu | STEP / DIR / ENABLE |
-| mov | bobinele motoarelor |
-| magenta | E-STOP și releu |
-| turcoaz | encoder și potențiometru |
-| albastru | magistrala I2C |
-| verde | limitatoare de cursă |
-| galben | butoane, LED-uri, buzzer |
+| red | 3V3 logic supply |
+| dark red | motor supply, through the relay |
+| black | ground (GND) |
+| orange | STEP / DIR / ENABLE |
+| purple | motor coils |
+| magenta | E-STOP and relay |
+| teal | encoder and potentiometer |
+| blue | I2C bus |
+| green | limit switches |
+| yellow | buttons, LEDs, buzzer |
 
-## 4. Demo în Wokwi, pas cu pas
+## 4. Wokwi demo, step by step
 
-### Varianta A: Wokwi pentru VS Code (recomandată, are legătură cu dashboard-ul)
+### Option A: Wokwi for VS Code (recommended, connects to the dashboard)
 
-1. Instalați VS Code, extensia **PlatformIO IDE** și extensia **Wokwi Simulator**. Activați
-   licența gratuită Wokwi: F1 → „Wokwi: Request a New License”.
-2. Deschideți folderul `firmware/` în VS Code.
-3. Compilați varianta de simulare:
+1. Install VS Code, the **PlatformIO IDE** extension and the **Wokwi Simulator** extension.
+   Activate the free Wokwi license: F1 → "Wokwi: Request a New License".
+2. Open the `firmware/` folder in VS Code.
+3. Build the simulation variant:
    ```
    pio run -e esp32dev_sim
    ```
-   Rezultă `.pio/build/esp32dev_sim/firmware.factory.bin`, pe care îl citește `wokwi.toml`.
-4. F1 → **„Wokwi: Start Simulator”**. Se deschide circuitul și începe simularea.
+   This produces `.pio/build/esp32dev_sim/firmware.factory.bin`, which `wokwi.toml` points to.
+4. F1 → **"Wokwi: Start Simulator"**. The circuit opens and the simulation starts.
 
-### Varianta B: în browser, pe wokwi.com
+### Option B: in the browser, on wokwi.com
 
-1. Generați un folder plat cu toate sursele:
+1. Generate a flat folder with all the sources:
    ```
    python tools/wokwi/make_web_bundle.py
    ```
-   Rezultatul este în `build/wokwi_web/`: `sketch.ino`, fișierele `.cpp/.h`, `diagram.json` și
+   The result is in `build/wokwi_web/`: `sketch.ino`, the `.cpp/.h` files, `diagram.json` and
    `libraries.txt`.
-2. Pe wokwi.com creați un proiect nou „ESP32”. Înlocuiți `diagram.json`, încărcați celelalte
-   fișiere (meniul de fișiere → „Upload file(s)”) și apăsați Start.
-3. Atenție: wokwi.com compilează într-o partiție de 1,25 MB, iar firmware-ul ocupă 92,4% din ea
-   (a fost verificat cu aceeași compilare locală). Nu are port serial spre dashboard; pentru
-   legătura cu dashboard-ul folosiți varianta A.
+2. On wokwi.com create a new "ESP32" project. Replace `diagram.json`, upload the other files
+   (file menu → "Upload file(s)") and press Start.
+3. Note: wokwi.com builds into a 1.25 MB partition and the firmware uses 92.4% of it (checked
+   with the same build locally). It has no serial port to the dashboard; use option A for that.
 
-### Ce încercați și ce vedeți
+### What to try and what you see
 
-Tastele scurte funcționează după un clic pe zona circuitului.
+Keyboard shortcuts work after clicking on the circuit area.
 
-| Acțiune | Ce vedeți |
+| Action | What you see |
 |---|---|
-| Porniți simularea | OLED: ecranul de pornire „POLARIS”, „fw 1.0.0”. LCD: „POLARIS SAT-1”, „firmware 1.0.0”, apoi pașii WiFi, NTP, TLE pe ultimul rând. Serial: `{"ev":"BOOT",...}` și mesaje `INFO`. |
-| Așteptați 5-10 s | Starea HOMING: LED-ul galben clipește, ambele motoare se rotesc spre capătul de cursă. În build-ul de simulare, limita se consideră atinsă după un număr cunoscut de pași. Apoi `HOME_OK`. |
-| După homing | WAIT_AOS: LCD-ul arată satelitul (ISS), următorul AOS, elevația maximă și numărătoarea inversă. Antena merge la azimutul de răsărire. LED galben fix. |
-| Butonul **MOD** (tasta `m`) de două ori | AUTO → MANUAL → DEMO. În DEMO, sistemul sare la următorul pasaj ISS bun (elevația maximă ≥ 20°) și îl rulează de 30 de ori mai repede. |
-| În DEMO, la AOS | Bip scurt, ACQUIRE (verde clipește), apoi TRACK (verde fix). Motoarele urmăresc satelitul; OLED-ul desenează traiectoria pe cerul polar. |
-| Mutați glisorul de pe **MPU6050** (accel X/Y) | Roll și pitch se schimbă pe OLED, iar comanda motoarelor se modifică astfel încât antena să rămână pe satelit (compensare). |
-| La LOS | Bip dublu, evenimentul `LOS` cu eroarea maximă și RMS, apoi calculul următorului pasaj. |
-| **MOD** încă o dată | AUTO: urmărire în timp real a pasajelor reale. |
-| Butonul **MOD** până la MANUAL | Encoderul mută azimutul cu 0,5° pe clic; apăsarea encoderului comută pe elevație. Potențiometrul dă viteza (1-20°/s). |
-| Butonul **STOW** (tasta `s`) | Antena merge la azimut 0°, elevație 90°. |
-| Butonul **E-STOP** (tasta `e`) | Imediat: releul cade (LED-ul albastru „MOTOARE” se stinge), ENABLE se dezactivează, LED roșu fix, buzzer, `{"ev":"ESTOP"}`. |
-| **HOME** (tasta `h`) după E-STOP | Confirmare (`ACK`), apoi homing din nou. Dacă E-STOP este încă apăsat, apare `ERR ESTOP_ACTIVE`. |
-| Mutați glisorul unui **limitator** în afara homing-ului | Este simulat un fir rupt sau o depășire de cursă: FAULT `LIMIT_AZ` sau `LIMIT_EL`, LED roșu clipește. Readuceți glisorul, apoi HOME. |
-| Scrieți în monitorul serial `SAT:33591` | Comută pe NOAA 19, descarcă TLE-ul și calculează pasajul. |
-| `WARP:60`, `MODE:DEMO` | DEMO de 60 de ori mai rapid. |
-| `VEH:5,-3,120` | Trimite atitudinea vehiculului manual (roll 5°, pitch −3°, yaw 120°). `VEH:OFF` revine la MPU6050. |
-| `SAT:43700` | Satelitul geostaționar: punct fix pe cer, fără AOS/LOS. Antena stă fixă (cu compensare). |
+| Start the simulation | OLED: splash screen "POLARIS", "fw 1.0.0". LCD: "POLARIS SAT-1", "firmware 1.0.0", then the WiFi, NTP, TLE steps on the last line. Serial: `{"ev":"BOOT",...}` and `INFO` messages. |
+| Wait 5-10 s | HOMING: the yellow LED blinks, both motors turn toward the end of travel. In the simulation build the limit is considered reached after a known number of steps. Then `HOME_OK`. |
+| After homing | WAIT_AOS: the LCD shows the satellite (ISS), the next AOS, the max elevation and the countdown ("AȘTEPTARE" = waiting). The antenna goes to the rise azimuth. Yellow LED steady. |
+| **MODE** button (key `m`) twice | AUTO → MANUAL → DEMO. In DEMO the system jumps to the next good ISS pass (max elevation ≥ 20°) and runs it 30 times faster. |
+| In DEMO, at AOS | Short beep, ACQUIRE (green blinks), then TRACK (green steady). The motors follow the satellite; the OLED draws the track on a polar sky plot. |
+| Move the **MPU6050** sliders (accel X/Y) | Roll and pitch change on the OLED and the motor commands change so the antenna stays on the satellite (compensation). |
+| At LOS | Double beep, a `LOS` event with the max and RMS error, then the next pass is computed. |
+| **MODE** once more | AUTO: real-time tracking of real passes. |
+| **MODE** until MANUAL | The encoder moves the azimuth 0.5° per click; pressing the encoder switches to elevation. The potentiometer sets the speed (1-20°/s). |
+| **STOW** button (key `s`) | The antenna goes to azimuth 0°, elevation 90°. |
+| **E-STOP** button (key `e`) | Immediately: the relay drops (the blue "MOTOARE" = motors LED goes off), ENABLE is released, red LED steady, buzzer, `{"ev":"ESTOP"}`. |
+| **HOME** (key `h`) after E-STOP | Confirmation (`ACK`), then homing again. If E-STOP is still pressed you get `ERR ESTOP_ACTIVE`. |
+| Move a **limit switch** slider outside homing | Simulates a broken wire or over-travel: FAULT `LIMIT_AZ` or `LIMIT_EL`, red LED blinks. Move the slider back, then HOME. |
+| Type `SAT:33591` in the serial monitor | Switches to NOAA 19, downloads its TLE and computes the pass. |
+| `WARP:60`, `MODE:DEMO` | DEMO 60 times faster. |
+| `VEH:5,-3,120` | Sends the vehicle attitude by hand (roll 5°, pitch −3°, yaw 120°). `VEH:OFF` goes back to the MPU6050. |
+| `SAT:43700` | The geostationary satellite: a fixed point in the sky, no AOS/LOS. The antenna holds still (with compensation). |
 
-## 5. Legătura Wokwi → dashboard
+## 5. Wokwi → dashboard link
 
-`wokwi.toml` conține `rfc2217ServerPort = 4000`. Cât timp simularea rulează în VS Code, portul
-serial al ESP32 este disponibil pe `localhost:4000`.
+`wokwi.toml` contains `rfc2217ServerPort = 4000`. While the simulation runs in VS Code, the
+ESP32 serial port is available on `localhost:4000`.
 
 ```
 cd ground_station
@@ -255,277 +259,283 @@ pip install -e .
 python -m polaris_gs --link rfc2217://localhost:4000
 ```
 
-Pentru o placă ESP32 reală: `python -m polaris_gs --link COM3` (Windows) sau
+For a real ESP32 board: `python -m polaris_gs --link COM3` (Windows) or
 `--link /dev/ttyUSB0` (Linux).
 
-Ce arată dashboard-ul („POLARIS Ground Station”):
+What the dashboard ("POLARIS Ground Station") shows:
 
-- **Glob 3D**: Pământul, orbita, urma la sol, conul de vizibilitate și satelitul.
-- **Cerul polar**: traiectoria pasajului, poziția satelitului (albastru) și unde privește antena
-  (portocaliu).
-- **Vehicul 3D**: vehiculul înclinat după roll, pitch și yaw, cu antena rotită exact ca motoarele.
-  Linia portocalie arată axa antenei, iar linia albastră direcția reală spre satelit; când se
-  suprapun, urmărirea e bună.
-- **Grafice**: azimut, elevație și eroarea de pointare în timp.
-- **Tabelul pasajelor** următoare.
-- **Controale**: satelit, mod, warp, compensare on/off, profil vehicul, JOG, HOME, STOW, ACK.
-- **Jurnalul de evenimente**.
-- **Verificare skyfield**: dashboard-ul recalculează independent poziția satelitului cu skyfield
-  și afișează diferența față de firmware (≈ 0,05°, cât permite rotunjirea telemetriei).
-- La fiecare LOS, rezultatul pasajului se salvează în **SQLite**, cu sau fără compensare, ca să
-  poată fi comparate.
+- **3D globe**: the Earth, the orbit, the ground track, the visibility cone and the satellite.
+- **Sky plot**: the pass track, the satellite position (blue) and where the antenna points
+  (orange).
+- **3D vehicle**: the vehicle tilted by roll, pitch and yaw, with the antenna turned exactly like
+  the motors. The orange line is the antenna axis and the blue line the true direction to the
+  satellite; when they overlap, tracking is good.
+- **Charts**: azimuth, elevation and pointing error over time.
+- **Table of upcoming passes**.
+- **Controls**: satellite, mode, warp, compensation on/off, vehicle profile, JOG, HOME, STOW, ACK.
+- **Event log**.
+- **skyfield cross-check**: the dashboard independently recomputes the satellite position with
+  skyfield and shows the difference to the firmware (≈ 0.05°, limited by telemetry rounding).
+- At every LOS the pass result is saved to **SQLite**, with or without compensation, so they can
+  be compared.
 
-Profilul de vehicul („staționar”, „drum denivelat”, „viraj”, „pantă”) trimite comenzi `VEH`
-de 20 de ori pe secundă, ca și cum vehiculul s-ar mișca. Astfel se poate testa compensarea fără
-a muta manual glisoarele MPU6050.
+The vehicle profile ("Staționar" = stationary, "Drum denivelat" = bumpy road, "Viraj" = turn,
+"Pantă" = slope) sends `VEH` commands 20 times per second, as if the vehicle were moving. This
+tests the compensation without moving the MPU6050 sliders by hand.
 
-## 6. Simulare fără Wokwi
+## 6. Simulation without Wokwi
 
 ```
 cd ground_station
 pip install -e ".[dev]"
-python -m polaris_gs                 # simulare internă
-python -m polaris_gs --online-tle    # simulare internă, TLE descărcat de la CelesTrak
+python -m polaris_gs                 # internal simulation
+python -m polaris_gs --online-tle    # internal simulation, TLE downloaded from CelesTrak
 ```
 
-Legătura `sim` rulează în proces **copia Python a firmware-ului** (`polaris_gs/sim/controller.py`):
-aceleași stări, aceleași constante, același SGP4, aceleași mesaje JSON. Motoarele sunt modelate
-cu profilul de accelerație al AccelStepper. Tot dashboard-ul funcționează identic. În modul
-`sim` sunt active și butoanele „E-STOP (simulare)” și „Injectează limitator AZ”.
+The `sim` link runs the **Python copy of the firmware** in-process
+(`polaris_gs/sim/controller.py`): same states, same constants, same SGP4, same JSON messages.
+The motors are modeled with the AccelStepper acceleration profile. The whole dashboard works the
+same way. In `sim` mode the "E-STOP (simulare)" and "Injectează limitator AZ" (inject AZ limit)
+buttons are also enabled.
 
-![Dashboard după un pasaj](docs/img/dashboard_after_pass.png)
+![Dashboard after a pass](docs/img/dashboard_after_pass.png)
 
-## 7. Matematica
+## 7. The math
 
-### 7.1 SGP4: unde este satelitul
+### 7.1 SGP4: where the satellite is
 
-TLE-ul (două linii de 69 de caractere) descrie orbita la un moment dat (epoca). SGP4 propagă orbita
-până la momentul dorit, ținând cont de forma Pământului (J2, J3, J4), de frânarea atmosferică
-(termenul B\*) și, pentru orbite înalte, de efectul Lunii și Soarelui (SDP4). Rezultatul este
-poziția în cadrul **TEME** (ecuatorial, legat de stele).
+The TLE (two 69-character lines) describes the orbit at a given moment (the epoch). SGP4
+propagates the orbit to the requested time, accounting for the Earth's shape (J2, J3, J4),
+atmospheric drag (the B\* term) and, for high orbits, the Moon and Sun (SDP4). The result is the
+position in the **TEME** frame (equatorial, star-fixed).
 
-Lanțul de transformări din `pc_orbit.cpp` / `orbit.py`:
+The transformation chain in `pc_orbit.cpp` / `orbit.py`:
 
-1. **TEME → ECEF**: rotație cu unghiul orar sideral GMST (IAU-82) în jurul axei Z.
-2. **Stație → ECEF**: lat/lon/alt pe elipsoidul WGS84.
-3. **ECEF → ENU** (Est, Nord, Sus) la stație:
-   `ENU = R(lat, lon) · (r_sat − r_stație)`.
-4. **Azimut și elevație**: `az = atan2(E, N)`, `el = asin(U / |ENU|)`.
+1. **TEME → ECEF**: rotation about Z by the Greenwich sidereal angle GMST (IAU-82).
+2. **Station → ECEF**: lat/lon/alt on the WGS84 ellipsoid.
+3. **ECEF → ENU** (East, North, Up) at the station:
+   `ENU = R(lat, lon) · (r_sat − r_station)`.
+4. **Azimuth and elevation**: `az = atan2(E, N)`, `el = asin(U / |ENU|)`.
 
-Pasajul următor: firmware-ul eșantionează elevația la 2 s pe 24 h, găsește trecerile prin 5° cu
-bisecție și maximul cu căutare golden-section. Calculul se face o dată pe pasaj, nu la fiecare ciclu.
-Pentru sateliții geostaționari (mișcare medie aproximativ 1 rotație/zi) căutarea este sărită:
-satelitul este fie mereu vizibil, fie niciodată.
+Next pass: the firmware samples the elevation every 2 s over 24 h, finds the 5° crossings by
+bisection and the maximum by golden-section search. This runs once per pass, not every cycle.
+For geostationary satellites (mean motion about 1 rev/day) the search is skipped: the satellite
+is either always visible or never.
 
-SGP4 este implementarea de referință a lui Vallado (2020), aceeași de la care provin bibliotecile
-python-sgp4 și skyfield. Biblioteca Arduino „SGP4” (Hopperpop), cerută inițial, a fost testată pe
-vectorii oficiali SGP4-VER și a dat abateri de sute de metri până la kilometri; de aceea a fost
-înlocuită (vezi secțiunea 8).
+SGP4 is Vallado's reference implementation (2020), the same one python-sgp4 and skyfield are
+built on. The Arduino "SGP4" library (Hopperpop), originally requested, was tested against the
+official SGP4-VER vectors and deviated by hundreds of meters to kilometers, so it was replaced
+(see section 8).
 
-### 7.2 Transformarea în cadrul vehiculului
+### 7.2 Transformation into the vehicle frame
 
-Cadrul vehiculului este FLU (x înainte, y stânga, z sus, convenția ROS REP-103). Atitudinea:
-
-```
-R = Rz(yaw) · Ry(pitch) · Rx(roll)          (vehicul → lume ENU)
-v_vehicul = Rᵀ · v_ENU
-```
-
-Yaw se măsoară de la Est, trigonometric, ca în ENU: yaw 90° înseamnă vehicul orientat spre Nord.
-Pe cadrul vehiculului:
+The vehicle frame is FLU (x forward, y left, z up, the ROS REP-103 convention). Attitude:
 
 ```
-az_suport = atan2(−y, x)      (de la înainte, în sens orar, ca un azimut)
-el_suport = asin(z)
+R = Rz(yaw) · Ry(pitch) · Rx(roll)          (vehicle → ENU world)
+v_vehicle = Rᵀ · v_ENU
 ```
 
-Fără compensare, comanda ar fi doar `az_suport = az − (90° − yaw)`, `el_suport = el`. Pe o pantă de
-8°, aceasta greșește cu până la 8° (experimentul A5).
+Yaw is measured from East, counter-clockwise, as in ENU: yaw 90° means the vehicle faces North.
+In the vehicle frame:
 
-**Roll și pitch din accelerometru.** Când vehiculul stă, accelerometrul măsoară doar gravitația:
+```
+az_pedestal = atan2(−y, x)      (from forward, clockwise, like an azimuth)
+el_pedestal = asin(z)
+```
+
+Without compensation the command would only be `az_pedestal = az − (90° − yaw)`,
+`el_pedestal = el`. On an 8° slope this is off by up to 8° (experiment A5).
+
+**Roll and pitch from the accelerometer.** When the vehicle is still, the accelerometer measures
+only gravity:
 
 ```
 roll  = atan2(a_y, a_z)
 pitch = atan2(−a_x, √(a_y² + a_z²))
 ```
 
-Accelerometrul are zgomot și simte și vibrațiile, iar giroscopul derivă în timp. **Filtrul
-complementar** le combină: `θ = α·(θ + ω·dt) + (1−α)·θ_accel`, cu α = 0,98. Pe termen scurt
-contează giroscopul, iar pe termen lung accelerometrul.
+The accelerometer is noisy and also picks up vibration, while the gyroscope drifts over time. A
+**complementary filter** combines them: `θ = α·(θ + ω·dt) + (1−α)·θ_accel`, with α = 0.98. The
+gyroscope dominates in the short term and the accelerometer in the long term.
 
-Yaw nu se poate afla din accelerometru. Implicit este fixat (90°); dashboard-ul îl poate trimite
-prin `VEH`. Pe hardware real ar veni de la un GPS cu două antene sau de la un magnetometru
-(secțiunea 10).
+Yaw cannot be obtained from the accelerometer. By default it is fixed (90°); the dashboard can
+send it with `VEH`. On real hardware it would come from a dual-antenna GPS or a magnetometer
+(section 10).
 
-### 7.3 Keyhole și cablu
+### 7.3 Keyhole and cable wrap
 
-Suportul azimut-elevație are o **gaură de cheie (keyhole) la zenit**. Când satelitul trece aproape
-de verticală, azimutul se schimbă cu până la 180° în câteva secunde. Viteza cerută este
-aproximativ `ω_az ≈ ω_sat / cos(el)` și tinde la infinit când el → 90°. Motorul este limitat
-la 40°/s și 120°/s².
+An azimuth-elevation pedestal has a **keyhole at the zenith**. When the satellite passes close to
+vertical, the azimuth changes by up to 180° in a few seconds. The required rate is about
+`ω_az ≈ ω_sat / cos(el)` and goes to infinity as el → 90°. The motor is limited to 40°/s and
+120°/s².
 
-Soluțiile implementate:
+Implemented solutions:
 
-1. **Limitare de viteză cu anticipare.** La începutul pasajului, firmware-ul calculează tot
-   profilul de azimut. Îl trece printr-un limitator de viteză înainte-înapoi (fază zero), astfel
-   încât antena începe rotirea mai devreme și nu rămâne în urmă după zenit. Eroarea maximă pe
-   pasajul prin zenit (89,4°) scade de la 1,09° la 0,68° în timp real (experimentele B1/B2).
-2. **Evenimentul `KEYHOLE`**: o dată la planificare (`"pred":1`, cu viteza cerută și cea
-   disponibilă), apoi în timpul pasajului când eroarea trece de 0,5° din cauza limitei de viteză
-   la elevație peste 70°. Când viteza este saturată din alt motiv (de exemplu o schimbare bruscă
-   de yaw), evenimentul se numește `RATE_LIMIT`. Ambele raportează eroarea.
-3. **Cablul (cable wrap).** Azimutul are cursă de ±270°, nu 360° continuu, pentru că firele trec
-   prin articulație. La începutul pasajului se alege **o singură dată** varianta de azimut
-   (θ, θ ± 360°) pentru care tot pasajul rămâne în ±270° cu cea mai mică rotire inițială. Astfel
-   antena nu trebuie să se întoarcă la 360° în mijlocul pasajului. Alegerea se anunță cu
-   evenimentul `WRAP`.
+1. **Rate limiting with look-ahead.** At the start of the pass the firmware computes the whole
+   azimuth profile and runs it through a forward-backward (zero-phase) rate limiter, so the
+   antenna starts turning earlier and does not fall behind after the zenith. On the zenith pass
+   (89.4°) the maximum error drops from 1.09° to 0.68° in real time (experiments B1/B2).
+2. **The `KEYHOLE` event**: once at planning time (`"pred":1`, with the required and available
+   rate), then during the pass when the error exceeds 0.5° because of the rate limit at
+   elevations above 70°. When the rate saturates for another reason (for example a sudden yaw
+   change) the event is called `RATE_LIMIT`. Both report the error.
+3. **Cable wrap.** The azimuth has ±270° of travel, not continuous 360°, because the wires run
+   through the joint. At the start of the pass the azimuth branch (θ, θ ± 360°) is chosen
+   **once**, so that the whole pass stays within ±270° with the smallest initial slew. This way
+   the antenna never has to unwind 360° in the middle of a pass. The choice is reported with the
+   `WRAP` event.
 
-### 7.4 Compensarea pe vehicul în mișcare
+### 7.4 Compensation on a moving vehicle
 
-Comanda se recalculează la 50 Hz cu atitudinea filtrată. Matematica este exactă (test: cu compensare, eroarea
-rămasă este < 10⁻⁶ ° pe 300 de atitudini aleatoare). Limita practică este **accelerația motoarelor**: pe drumul denivelat
-simulat, componentele de 1,5° la 1,9 Hz pe roll și de 1,2° la 2,3 Hz pe pitch cer singure peste
-200°/s² (A·ω²), iar motoarele au 120°/s². Experimentele A2/A3/A6 arată exact asta (secțiunea 8).
+The command is recomputed at 50 Hz with the filtered attitude. The math is exact (test: with
+compensation, the remaining error is < 10⁻⁶ ° over 300 random attitudes). The practical limit is
+**motor acceleration**: on the simulated bumpy road, the 1.5° components at 1.9 Hz on roll and
+1.2° at 2.3 Hz on pitch alone need more than 200°/s² (A·ω²), while the motors have 120°/s².
+Experiments A2/A3/A6 show exactly this (section 8).
 
-## 8. Verificare și rezultate
+## 8. Verification and results
 
-### Ce s-a verificat și cum
+### What was verified and how
 
-| Verificare | Cum | Rezultat |
+| Check | How | Result |
 |---|---|---|
-| SGP4 firmware vs vectorii oficiali SGP4-VER (Vallado) | test nativ g++ + pytest | 659 de puncte, abatere maximă 0,12 mm |
-| Copia Python vs skyfield (az/el) | pytest, toți sateliții, 24 h | ≤ 0,004° (cerința: < 0,1°) |
-| Matematica C++ vs Python (ENU → vehicul, roll/pitch, GMST, wrap, limitare de viteză) | test de paritate, 300 de cazuri aleatoare | diferență < 10⁻⁹ ° |
-| Parserul de comenzi C++ vs Python | aceleași 29 de linii, inclusiv cele greșite | aceleași răspunsuri și erori |
-| Mașina de stări C++ vs Python | 5 scenarii (demo cu înclinare, keyhole, siguranță, homing expirat, GEO manual) | aceeași secvență de evenimente și telemetrie |
-| Teste unitare | `pytest` (85 de teste) | toate trec |
-| Firmware ESP32 | `pio run`, toate cele 3 medii | 0 avertismente |
-| Binarul real ESP32 | QEMU Espressif (`tools/qemu_smoke.py`), comenzi pe UART | BOOT → TLE de rezervă → HOMING → HOME_OK → MANUAL → JOG → SAT:43700 → AUTO → ACQUIRE → TRACK → VEH → STOW → HOME |
-| Circuitul Wokwi | linterul oficial `@wokwi/diagram-lint` + `check_pins.py` | 0 erori, 0 avertismente; 23 de pini, toți conform `pins.h` |
-| Dashboard | capturi sub Xvfb, verificate vizual | `docs/img/` |
+| Firmware SGP4 vs the official SGP4-VER vectors (Vallado) | native g++ test + pytest | 659 points, max deviation 0.12 mm |
+| Python copy vs skyfield (az/el) | pytest, all satellites, 24 h | ≤ 0.004° (requirement: < 0.1°) |
+| C++ vs Python math (ENU → vehicle, roll/pitch, GMST, wrap, rate limiting) | parity test, 300 random cases | difference < 10⁻⁹ ° |
+| C++ vs Python command parser | the same 29 lines, including invalid ones | same responses and errors |
+| C++ vs Python state machine | 5 scenarios (demo with tilt, keyhole, safety, homing timeout, manual GEO) | same event sequence and telemetry |
+| Unit tests | `pytest` (85 tests) | all pass |
+| ESP32 firmware | `pio run`, all 3 envs | 0 warnings |
+| Real ESP32 binary | Espressif QEMU (`tools/qemu_smoke.py`), commands over UART | BOOT → fallback TLE → HOMING → HOME_OK → MANUAL → JOG → SAT:43700 → AUTO → ACQUIRE → TRACK → VEH → STOW → HOME |
+| Wokwi circuit | official `@wokwi/diagram-lint` linter + `check_pins.py` | 0 errors, 0 warnings; 23 pins, all matching `pins.h` |
+| Dashboard | screenshots under Xvfb, checked visually | `docs/img/` |
 
-Comenzi:
+Commands:
 
 ```
-cd ground_station && pytest                       # 85 de teste
-make -C firmware/test_native                      # testul nativ g++ (-Wall -Wextra -Werror)
-cd firmware && pio run -e esp32dev_sim            # build pentru Wokwi
-python tools/experiments.py                       # regenerează docs/results
-xvfb-run -a python tools/screenshots.py docs/img  # capturi
+cd ground_station && pytest                       # 85 tests
+make -C firmware/test_native                      # native g++ test (-Wall -Wextra -Werror)
+cd firmware && pio run -e esp32dev_sim            # build for Wokwi
+python tools/experiments.py                       # regenerates docs/results
+xvfb-run -a python tools/screenshots.py docs/img  # screenshots
 ```
 
-**Memorie (esp32dev_sim):** RAM 25,5% (83 396 B din 327 680 B), Flash 38,5%
-(1 211 503 B din 3 145 728 B, partiția `huge_app`).
+**Memory (esp32dev_sim):** RAM 25.5% (83,396 B of 327,680 B), Flash 38.5%
+(1,211,503 B of 3,145,728 B, `huge_app` partition).
 
-### Experimente
+### Experiments
 
-Eroarea este unghiul real dintre axa antenei și direcția satelitului, cu înclinarea vehiculului
-aplicată. Este măsurată la 50 Hz de la AOS la LOS pe copia Python a firmware-ului. Scriptul
-`tools/experiments.py` regenerează tot (tabel, CSV, grafice, SQLite).
+The error is the true angle between the antenna axis and the direction to the satellite, with the
+vehicle tilt applied. It is measured at 50 Hz from AOS to LOS on the Python copy of the firmware.
+`tools/experiments.py` regenerates everything (table, CSV, plots, SQLite).
 
-| ID | Scenariu | Viteză | Max [°] | RMS [°] | P95 [°] |
+| ID | Scenario | Speed | Max [°] | RMS [°] | P95 [°] |
 |---|---|---|---|---|---|
-| A1 | staționar | x10 | 0,39 | 0,15 | 0,35 |
-| A2 | drum denivelat, cu compensare | x10 | 5,96 | 1,88 | 3,75 |
-| A3 | drum denivelat, fără compensare | x10 | 4,91 | 2,37 | 4,01 |
-| A4 | pantă 8°, cu compensare | x10 | 1,16 | 0,16 | 0,39 |
-| A5 | pantă 8°, fără compensare | x10 | 8,31 | 5,57 | 8,22 |
-| A6 | drum denivelat, cu compensare, accelerație x3 | x10 | 1,96 | 0,72 | 1,41 |
-| B1 | pasaj prin zenit, cu planificare keyhole | x1 | 0,68 | 0,05 | 0,02 |
-| B2 | pasaj prin zenit, fără planificare | x1 | 1,09 | 0,06 | 0,02 |
-| B3 | pasaj prin zenit, cu planificare keyhole | x10 | 15,92 | 5,01 | 14,51 |
-| B4 | pasaj prin zenit, fără planificare | x10 | 24,62 | 4,94 | 13,84 |
+| A1 | stationary | x10 | 0.39 | 0.15 | 0.35 |
+| A2 | bumpy road, compensated | x10 | 5.96 | 1.88 | 3.75 |
+| A3 | bumpy road, not compensated | x10 | 4.91 | 2.37 | 4.01 |
+| A4 | 8° slope, compensated | x10 | 1.16 | 0.16 | 0.39 |
+| A5 | 8° slope, not compensated | x10 | 8.31 | 5.57 | 8.22 |
+| A6 | bumpy road, compensated, acceleration x3 | x10 | 1.96 | 0.72 | 1.41 |
+| B1 | zenith pass, with keyhole planning | x1 | 0.68 | 0.05 | 0.02 |
+| B2 | zenith pass, without planning | x1 | 1.09 | 0.06 | 0.02 |
+| B3 | zenith pass, with keyhole planning | x10 | 15.92 | 5.01 | 14.51 |
+| B4 | zenith pass, without planning | x10 | 24.62 | 4.94 | 13.84 |
 
-Pasajele folosite: ISS 15.10.2026 03:44 UTC (elevație maximă 42,9°) pentru A și ISS 17.08.2026
-03:44 UTC (89,4°) pentru B, ambele calculate din TLE-urile stocate, ca rezultatele să fie
-repetabile.
+Passes used: ISS on 15 Oct 2026 03:44 UTC (max elevation 42.9°) for A and ISS on 17 Aug 2026
+03:44 UTC (89.4°) for B, both computed from the stored TLEs so the results are repeatable.
 
-![Eroarea cu și fără compensare](docs/results/error_compensation.png)
+![Error with and without compensation](docs/results/error_compensation.png)
 
 ![Keyhole](docs/results/error_keyhole.png)
 
-**Interpretare.**
+(Plot labels are in Romanian: "staționar" = stationary, "denivelat" = bumpy, "cu/fără
+compensare" = with/without compensation, "cu/fără planificare" = with/without planning.)
 
-- **Pantă (A4 vs A5):** compensarea reduce eroarea RMS de 35 de ori (5,57° → 0,16°). Aici
-  matematica lucrează singură, fiindcă înclinarea e constantă.
-- **Drum denivelat (A2, A3, A6):** cu motoarele de bază, compensarea scade RMS doar de la 2,37°
-  la 1,88°, iar vârful chiar crește. Motoarele nu pot urmări oscilații de 1,9 Hz la 120°/s² și
-  rămân în urmă cu o fază care uneori adună erorile. Cu accelerație x3 (A6), RMS scade la 0,72°.
-  Concluzie: pe vehicul, limita e **actuatorul**, nu calculul. Aceasta este motivația
-  stabilizatoarelor reale cu motoare directe (secțiunea 10).
-- **Keyhole (B):** în timp real, planificarea anticipată reduce vârful de la 1,09° la 0,68°.
-  La x10 orice suport de 40°/s pierde satelitul pentru câteva secunde la zenit, dar
-  planificarea scade vârful de la 24,6° la 15,9°. Valorile P95 mici arată că eroarea apare doar
-  în câteva secunde din jurul zenitului.
+**Interpretation.**
 
-## 9. Montaj fizic
+- **Slope (A4 vs A5):** compensation cuts the RMS error 35 times (5.57° → 0.16°). Here the math
+  does all the work, since the tilt is constant.
+- **Bumpy road (A2, A3, A6):** with the baseline motors, compensation only lowers the RMS from
+  2.37° to 1.88°, and the peak actually grows. The motors cannot follow 1.9 Hz oscillations at
+  120°/s² and lag with a phase that sometimes adds the errors up. With 3x acceleration (A6) the
+  RMS drops to 0.72°. Conclusion: on a vehicle the limit is the **actuator**, not the
+  computation. This is why real stabilizers use direct-drive motors (section 10).
+- **Keyhole (B):** in real time, look-ahead planning lowers the peak from 1.09° to 0.68°. At x10
+  any 40°/s pedestal loses the satellite for a few seconds at the zenith, but planning lowers the
+  peak from 24.6° to 15.9°. The small P95 values show the error only appears in the few seconds
+  around the zenith.
 
-- Schema electrică: [`docs/hardware/schematic_power.svg`](docs/hardware/schematic_power.svg)
-  (alimentare, siguranță, motoare) și
+## 9. Physical build
+
+- Schematic: [`docs/hardware/schematic_power.svg`](docs/hardware/schematic_power.svg)
+  (power, safety, motors) and
   [`docs/hardware/schematic_logic.svg`](docs/hardware/schematic_logic.svg)
-  (ESP32, senzori, interfață). Se generează cu `python tools/schematic.py`.
-- Lista de componente cu prețuri orientative: [`docs/hardware/bom.md`](docs/hardware/bom.md)
-  (aproximativ 650 lei fără opționale).
+  (ESP32, sensors, operator interface). Generated with `python tools/schematic.py`.
+- Bill of materials with indicative Romanian prices: [`docs/hardware/bom.md`](docs/hardware/bom.md)
+  (about 650 lei, roughly 130 EUR, without the optional parts). The BOM and the schematic labels
+  are in Romanian.
 
-![Schema de putere](docs/hardware/schematic_power.png)
+![Power schematic](docs/hardware/schematic_power.png)
 
-![Schema logică](docs/hardware/schematic_logic.png)
+![Logic schematic](docs/hardware/schematic_logic.png)
 
-Puncte importante:
+Key points:
 
-- **Alimentare**: 12 V / 5 A → siguranță 3 A → întrerupător. Din 12 V, un coborâtor LM2596 dă
-  5 V pentru ESP32 și LCD. ESP32 face 3,3 V intern pentru senzori și logica A4988.
-- **Driverele A4988**: câte un condensator de 100 µF / 35 V direct pe VMOT. RESET legat la SLEEP.
-  MS1-MS3 la 3,3 V (1/16). Curentul se reglează din Vref înainte de a monta motorul.
-- **Lanțul de siguranță este hardware**: E-STOP-ul (contact NC cu reținere) este în serie cu
-  bobina releului. Apăsarea lui taie bobina, releul deschide VMOT, iar motoarele se opresc chiar
-  dacă ESP32 s-a blocat. Un al doilea contact al butonului (NO) merge la GPIO12, ca firmware-ul să
-  știe ce s-a întâmplat, să dezactiveze ENABLE și să ceară confirmare.
-- **Limitatoarele sunt NC la masă**: un fir rupt arată ca un limitator atins, deci sistemul
-  intră în siguranță (fail-safe).
-- **I2C**: pull-up-uri de 4,7 kΩ la 3,3 V. Modulul LCD are pull-up-uri la 5 V; acestea se
-  scot sau se folosește un translator de nivel.
-- **Opțional**: două AS5600 (encodere magnetice absolute pe axele antenei), prin multiplexorul
-  TCA9548A pentru că au aceeași adresă. Ele închid bucla de poziție (secțiunea 10).
+- **Power**: 12 V / 5 A → 3 A fuse → switch. From 12 V, an LM2596 buck converter gives 5 V for the
+  ESP32 and the LCD. The ESP32 makes 3.3 V internally for the sensors and the A4988 logic.
+- **A4988 drivers**: one 100 µF / 35 V capacitor right at VMOT on each. RESET tied to SLEEP.
+  MS1-MS3 at 3.3 V (1/16). Set the current through Vref before connecting the motor.
+- **The safety chain is hardware**: the E-STOP (latching NC contact) is in series with the relay
+  coil. Pressing it cuts the coil, the relay opens VMOT and the motors stop even if the ESP32 has
+  hung. A second contact of the button (NO) goes to GPIO12 so the firmware knows what happened,
+  releases ENABLE and asks for confirmation.
+- **Limit switches are NC to ground**: a broken wire looks like a hit switch, so the system goes
+  to a safe state (fail-safe).
+- **I2C**: 4.7 kΩ pull-ups to 3.3 V. The LCD module has pull-ups to 5 V; remove them or use a
+  level shifter.
+- **Optional**: two AS5600 (absolute magnetic encoders on the antenna axes), through a TCA9548A
+  multiplexer because they share the same address. They close the position loop (section 10).
 
-Diferențe între circuitul Wokwi și cel fizic (Wokwi nu are toate piesele):
+Differences between the Wokwi circuit and the physical one (Wokwi doesn't have every part):
 
-| În Wokwi | În montajul fizic | Motiv |
+| In Wokwi | In the physical build | Reason |
 |---|---|---|
-| E-STOP = buton momentan + modul releu comandat de GPIO13 | E-STOP NC cu reținere în serie cu bobina releului | Wokwi nu are buton cu reținere și nici bobină separată |
-| Limitatoare = slide switch | micro switch NC | Wokwi nu are limitator mecanic |
-| Motoare alimentate direct din releu, fără sursă de 12 V | sursă 12 V, siguranță, LM2596 | Wokwi nu simulează alimentarea |
-| Fără condensatoare pe VMOT | 100 µF / 35 V pe fiecare driver | idem |
-| LCD direct pe magistrala de 3,3 V | translator de nivel sau pull-up-uri scoase | Wokwi nu simulează nivelurile de tensiune |
+| E-STOP = momentary button + relay module driven by GPIO13 | latching NC E-STOP in series with the relay coil | Wokwi has no latching button and no separate coil |
+| Limit switches = slide switches | NC micro switches | Wokwi has no mechanical limit switch |
+| Motors powered straight from the relay, no 12 V supply | 12 V supply, fuse, LM2596 | Wokwi doesn't simulate power |
+| No capacitors on VMOT | 100 µF / 35 V on each driver | same |
+| LCD directly on the 3.3 V bus | level shifter or pull-ups removed | Wokwi doesn't simulate voltage levels |
 
-## 10. Limitele simulării și rezolvarea lor pe hardware real
+## 10. Simulation limits and how to solve them on real hardware
 
-| Limita în simulare | Ce înseamnă | Rezolvare pe hardware real |
+| Limit in simulation | What it means | Solution on real hardware |
 |---|---|---|
-| Homing-ul consideră limita atinsă după un număr fix de pași (`POLARIS_SIMULATION`) | Wokwi nu are o piesă care se mișcă și apasă limitatorul | Build-ul `esp32dev_hw` așteaptă limitatorul real; timeout-ul de 45 s rămâne |
-| Motorul Wokwi execută orice pas | Fără pași pierduți, fără inerție, fără rezonanțe | Encodere absolute AS5600 pe axe (deja în schemă) și verificarea poziției după homing; curent reglat corect; accelerații măsurate |
-| MPU6050 din Wokwi dă valori statice, fără zgomot și fără vibrații | Filtrul complementar nu e testat la vibrații reale | Montaj elastic al IMU-ului; calibrarea offset-ului la pornire; filtru Kalman sau Madgwick |
-| Yaw fix sau trimis din dashboard | Un vehicul real se rotește | GPS cu două antene (heading), IMU cu magnetometru (BNO055), eventual giroscop pe Z integrat între corecții |
-| Poziția stației fixă (Politehnica) | Vehiculul se deplasează | Modul GNSS (NEO-6M): poziția actualizată la fiecare secundă în calculul ENU |
-| Ora vine prin NTP (WiFi Wokwi-GUEST) | Fără rețea pe teren | Ora din GNSS (PPS) sau un RTC DS3231 |
-| TLE descărcat prin WiFi | Pe teren nu există WiFi; TLE-ul îmbătrânește (ISS: aproximativ 1-3 km/zi) | Firmware-ul afișează vârsta TLE-ului și folosește TLE-ul de rezervă marcat „vechi”; pe teren, modem LTE sau actualizare înainte de plecare |
-| Viteza motoarelor (40°/s, 120°/s²) limitează compensarea pe drum denivelat | Experimentul A2 | Motoare mai rapide (servo cu buclă închisă, motoare directe BLDC) sau o platformă stabilizată separat (gimbal pe roll/pitch) |
-| Keyhole la zenit | Suport az-el | Montaj cu a treia axă (X-Y sau az-el-tilt) sau planificarea din firmware, acceptând o scurtă pierdere |
-| Cablu limitat la ±270° | Firele prin articulație | Inel colector (slip ring): azimut continuu |
-| Lanțul E-STOP din Wokwi trece prin software (GPIO13 comandă releul) | Nu e o oprire de categoria 0 | E-STOP NC în serie cu bobina releului (schema din secțiunea 9) |
-| Timpii pe ESP32 real (SGP4 la 10 Hz, bucla de 50 Hz) au fost verificați doar în QEMU, nu pe placă | QEMU nu are timpi realiști | Măsurare cu `esp_timer_get_time()` pe placă; estimarea (nemăsurată) este de ordinul sutelor de µs pe propagare, mult sub bugetul de 100 ms |
+| Homing considers the limit reached after a fixed number of steps (`POLARIS_SIMULATION`) | Wokwi has no moving part that presses the switch | The `esp32dev_hw` build waits for the real switch; the 45 s timeout stays |
+| The Wokwi motor executes every step | No lost steps, no inertia, no resonance | AS5600 absolute encoders on the axes (already in the schematic) and a position check after homing; correctly set current; measured accelerations |
+| The Wokwi MPU6050 gives static values, no noise or vibration | The complementary filter is not tested against real vibration | Elastic IMU mount; offset calibration at startup; Kalman or Madgwick filter |
+| Yaw fixed or sent from the dashboard | A real vehicle turns | Dual-antenna GPS (heading), IMU with magnetometer (BNO055), possibly a Z gyro integrated between corrections |
+| Fixed station position (Politehnica) | The vehicle moves | GNSS module (NEO-6M): position updated every second in the ENU computation |
+| Time comes from NTP (Wokwi-GUEST WiFi) | No network in the field | Time from GNSS (PPS) or a DS3231 RTC |
+| TLE downloaded over WiFi | No WiFi in the field; the TLE ages (ISS: about 1-3 km/day) | The firmware shows the TLE age and uses the fallback TLE marked as old ("vechi"); in the field, an LTE modem or an update before leaving |
+| Motor speed (40°/s, 120°/s²) limits compensation on a bumpy road | Experiment A2 | Faster motors (closed-loop servos, direct-drive BLDC) or a separately stabilized platform (roll/pitch gimbal) |
+| Keyhole at the zenith | Az-el pedestal | A third axis (X-Y or az-el-tilt mount), or the firmware planning, accepting a brief loss |
+| Cable limited to ±270° | Wires through the joint | Slip ring: continuous azimuth |
+| The Wokwi E-STOP chain goes through software (GPIO13 drives the relay) | Not a category 0 stop | NC E-STOP in series with the relay coil (schematic in section 9) |
+| Timing on a real ESP32 (SGP4 at 10 Hz, 50 Hz loop) was checked only in QEMU, not on a board | QEMU has no realistic timing | Measure with `esp_timer_get_time()` on the board; the (unmeasured) estimate is in the hundreds of µs per propagation, far below the 100 ms budget |
 
 ---
 
-### Note despre sursele folosite
+### Notes on sources
 
-- **Pinii și piesele Wokwi** (`wokwi-a4988`, `wokwi-stepper-motor`, `wokwi-mpu6050`,
-  `board-ssd1306`, `wokwi-lcd2004` cu `pins: i2c`, `wokwi-ky-040`, `wokwi-relay-module`,
-  `wokwi-slide-switch` și celelalte) au fost verificați în documentația oficială `wokwi-docs` și
-  în `wokwi-boards` (ESP32 DevKit V1), apoi cu linterul oficial `@wokwi/diagram-lint`.
-- **TLE-urile de rezervă** din firmware provin din fișierele Gpredict (epoci: ISS și QO-100
-  16.08.2026, NOAA 18/19 22.03.2026). Firmware-ul le marchează ca vechi (`tle_fb: 1`, vârsta în
-  zile pe LCD) până când descarcă unele noi de la CelesTrak.
-- **Biblioteci**: AccelStepper, U8g2, LiquidCrystal_I2C, Adafruit MPU6050 (cu Adafruit Unified
-  Sensor și BusIO) și SGP4 Vallado (inclus în `lib/sgp4_vallado`, licența în același folder).
-- Conturul continentelor de pe glob: Natural Earth 1:110m (domeniu public).
+- **Wokwi pins and parts** (`wokwi-a4988`, `wokwi-stepper-motor`, `wokwi-mpu6050`,
+  `board-ssd1306`, `wokwi-lcd2004` with `pins: i2c`, `wokwi-ky-040`, `wokwi-relay-module`,
+  `wokwi-slide-switch` and the others) were checked against the official `wokwi-docs` and
+  `wokwi-boards` (ESP32 DevKit V1), then with the official `@wokwi/diagram-lint` linter.
+- **The fallback TLEs** in the firmware come from the Gpredict data files (epochs: ISS and QO-100
+  16 Aug 2026, NOAA 18/19 22 Mar 2026). The firmware marks them as old (`tle_fb: 1`, age in days
+  on the LCD) until it downloads fresh ones from CelesTrak.
+- **Libraries**: AccelStepper, U8g2, LiquidCrystal_I2C, Adafruit MPU6050 (with Adafruit Unified
+  Sensor and BusIO) and SGP4 Vallado (bundled in `lib/sgp4_vallado`, license in the same folder).
+- Globe coastlines: Natural Earth 1:110m (public domain).
