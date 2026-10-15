@@ -10,3 +10,4 @@ build/
 tools/wokwi/.cache/
 !docs/results/experiments.sqlite
 *.egg-info/
+*.bundle
