@@ -72,9 +72,10 @@ function textSprite(text, color) {
 export class VehicleView {
   constructor(el, css) {
     this.el = el;
-    this.renderer = new THREE.WebGLRenderer({ antialias: true });
+    this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    this.renderer.setClearColor(css.bg);
+    this.renderer.setClearColor(0x000000, 0);
+    const v = css.veh;
     el.appendChild(this.renderer.domElement);
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(42, 1, 0.1, 200);
@@ -87,7 +88,9 @@ export class VehicleView {
     sun.position.set(-6, 10, 8);
     this.scene.add(sun);
 
-    const grid = new THREE.GridHelper(16, 16, 0x2a3b5e, 0x2a3b5e);
+    const grid = new THREE.GridHelper(16, 16, v.grid, v.grid);
+    grid.material.transparent = true;
+    grid.material.opacity = 0.35;
     this.scene.add(grid);
     const north = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0.01), new THREE.Vector3(0, 7, 0.01)]);
     this.world.add(new THREE.Line(north, new THREE.LineBasicMaterial({ color: css.muted })));
@@ -99,7 +102,7 @@ export class VehicleView {
       const m = new THREE.Mesh(geom, new THREE.MeshStandardMaterial({ color, roughness: 0.75, metalness: 0.05,
         side: edges ? THREE.FrontSide : THREE.DoubleSide, flatShading: edges }));
       if (edges) m.add(new THREE.LineSegments(new THREE.EdgesGeometry(geom, 25),
-        new THREE.LineBasicMaterial({ color: 0x0b1220, transparent: true, opacity: 0.6 })));
+        new THREE.LineBasicMaterial({ color: v.edge, transparent: true, opacity: v.edgeOpacity })));
       m.matrixAutoUpdate = false;
       this.world.add(m);
       return m;
@@ -107,16 +110,16 @@ export class VehicleView {
     const box = (sx, sy, sz, cx = 0, cy = 0, cz = 0) => new THREE.BoxGeometry(sx, sy, sz).translate(cx, cy, cz);
     const cylZ = (r, h, cz = 0) => new THREE.CylinderGeometry(r, r, h, 32).rotateX(Math.PI / 2).translate(0, 0, cz);
 
-    this.bodyItems = [mesh(box(4.6, 2.0, 0.9, 0, 0, 0.85), 0x6b7fa6), mesh(box(1.6, 1.9, 0.7, 1.4, 0, 1.6), 0x8aa0c8)];
+    this.bodyItems = [mesh(box(4.6, 2.0, 0.9, 0, 0, 0.85), v.body), mesh(box(1.6, 1.9, 0.7, 1.4, 0, 1.6), v.cab)];
     this.wheels = [];
     for (const wx of [-1.5, 1.5]) for (const wy of [-1.05, 1.05]) {
       // cylinder axis along local y = vehicle left/right
-      this.wheels.push([mesh(new THREE.CylinderGeometry(0.45, 0.45, 0.35, 28), 0x2a3245), [wx, wy, 0.45]]);
+      this.wheels.push([mesh(new THREE.CylinderGeometry(0.45, 0.45, 0.35, 28), v.wheel), [wx, wy, 0.45]]);
     }
-    this.base = mesh(cylZ(0.45, 0.35, 1.5), 0xb8c4dc);
-    this.turret = mesh(box(0.5, 0.5, 0.7, 0, 0, 0.35), new THREE.Color(css.second));
-    this.cradle = mesh(box(0.2, 1.2, 0.2), 0x9fb0cc);
-    this.dish = mesh(dishGeometry(), 0xd8e1f0, false);
+    this.base = mesh(cylZ(0.45, 0.35, 1.5), v.base);
+    this.turret = mesh(box(0.5, 0.5, 0.7, 0, 0, 0.35), v.turret);
+    this.cradle = mesh(box(0.2, 1.2, 0.2), v.cradle);
+    this.dish = mesh(dishGeometry(), v.dish, false);
 
     const line = (color) => {
       const g = new THREE.BufferGeometry();

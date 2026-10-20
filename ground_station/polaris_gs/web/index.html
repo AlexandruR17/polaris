@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>POLARIS Ground Station</title>
 <link rel="icon" id="favicon" href="data:,">
+<link rel="stylesheet" href="/static/vendor/fonts/fonts.css">
 <link rel="stylesheet" href="/static/vendor/uplot/uPlot.min.css">
 <link rel="stylesheet" href="/static/style.css">
 <script type="importmap">
@@ -12,109 +13,138 @@
 </script>
 </head>
 <body>
-<header id="head">
-  <div class="brand">
-    <span id="logo"></span>
-    <div>
-      <div class="title">POLARIS <span class="accent">Ground Station</span></div>
-      <div class="small">SAT-1 · Politehnica București 44.4386°N 26.0494°E</div>
-    </div>
-  </div>
-  <div class="chips">
-    <div class="chip" id="chip-state" data-icon="radar"><span class="cic"></span><div><div class="cap">Stare</div><div class="val">—</div></div></div>
-    <div class="chip" id="chip-utc" data-icon="clock-outline"><span class="cic"></span><div><div class="cap">Ora UTC</div><div class="val">—</div></div></div>
-    <div class="chip" id="chip-sat" data-icon="satellite-variant"><span class="cic"></span><div><div class="cap">Satelit · az / el</div><div class="val">—</div></div></div>
-    <div class="chip" id="chip-err" data-icon="crosshairs-gps"><span class="cic"></span><div><div class="cap">Eroare pointare</div><div class="val">—</div></div></div>
-    <div class="chip" id="chip-tle" data-icon="database"><span class="cic"></span><div><div class="cap">TLE</div><div class="val">—</div></div></div>
-    <div class="chip" id="chip-x" data-icon="check-decagram"><span class="cic"></span><div><div class="cap">Verificare skyfield</div><div class="val">—</div></div></div>
-  </div>
-  <div id="server" class="small"></div>
-</header>
+<div id="stage"><div id="globe"></div></div>
 
-<main id="grid">
-  <aside id="controls">
-    <section class="panel" data-icon="lan-connect" data-title="Legătură">
-      <select id="link-select" aria-label="Legătură"></select>
-      <input id="port-input" type="text" placeholder="COM3 sau /dev/ttyUSB0" hidden>
-      <button id="link-btn" data-icon="lan-connect">Conectează</button>
-      <div id="link-status" class="small">—</div>
+<div id="hud">
+  <header id="top">
+    <div class="brand">
+      <div class="word">POLARIS</div>
+      <div class="lbl">SAT-1 · Stație de sol · Politehnica București 44.4386°N 26.0494°E</div>
+    </div>
+    <div class="clock">
+      <div class="lbl" id="clock-label">—</div>
+      <div class="big mono" id="clock">T− --:--:--</div>
+    </div>
+    <div class="topright">
+      <div><div class="lbl">Ora UTC</div><div class="mid mono" id="utc">--:--:--</div></div>
+      <div><div class="lbl">Legătură</div><div class="mid" id="link-mini"><span class="dot"></span>—</div></div>
+      <div id="server" class="lbl"></div>
+    </div>
+  </header>
+
+  <aside id="left">
+    <section class="block" id="mission">
+      <h2>Misiune</h2>
+      <div class="state" id="state"><span class="dot"></span><span id="state-text">—</span></div>
+      <dl class="kv">
+        <dt>Satelit</dt><dd id="kv-sat">—</dd>
+        <dt>Az / El</dt><dd class="mono" id="kv-azel">—</dd>
+        <dt>Eroare</dt><dd class="mono" id="kv-err">—</dd>
+        <dt>TLE</dt><dd id="kv-tle">—</dd>
+        <dt>Skyfield</dt><dd class="mono" id="kv-x">—</dd>
+      </dl>
     </section>
-    <section class="panel" data-icon="satellite-uplink" data-title="Satelit și mod">
-      <select id="sat-select" aria-label="Satelit"></select>
-      <div class="btn-grid" id="mode-btns">
-        <button data-mode="AUTO" data-icon="satellite-uplink">Automat</button>
-        <button data-mode="DEMO" data-icon="fast-forward">Demo</button>
-        <button data-mode="MANUAL" data-icon="hand-back-right">Manual</button>
-        <button data-mode="IDLE" data-icon="pause-circle">Repaus</button>
+
+    <section class="block" id="control">
+      <h2>Control</h2>
+      <label class="lbl" for="sat-select">Satelit</label>
+      <select id="sat-select"></select>
+      <div class="lbl">Mod</div>
+      <div class="seg" id="mode-btns">
+        <button data-mode="AUTO">Automat</button>
+        <button data-mode="DEMO">Demo</button>
+        <button data-mode="MANUAL">Manual</button>
+        <button data-mode="IDLE">Repaus</button>
       </div>
-      <div class="row"><span class="small">Viteză DEMO</span><div id="warp-btns" class="row"></div></div>
-      <div class="row3">
+      <div class="lbl">Viteză demo</div>
+      <div class="seg" id="warp-btns"></div>
+      <div class="seg three">
         <button data-cmd="HOME" data-icon="home-import-outline">Home</button>
         <button data-cmd="STOW" data-icon="parking">Stow</button>
-        <button data-cmd="ACK" data-icon="check-circle">ACK</button>
+        <button data-cmd="ACK" data-icon="check-circle">Ack</button>
       </div>
-    </section>
-    <section class="panel" data-icon="car-side" data-title="Mișcare vehicul">
-      <select id="veh-select" aria-label="Mișcare vehicul"></select>
+      <div class="lbl">Reglaj manual</div>
+      <div class="seg four">
+        <button data-cmd="JOG:AZ,-5" title="Azimut −5°">AZ −</button>
+        <button data-cmd="JOG:AZ,5" title="Azimut +5°">AZ +</button>
+        <button data-cmd="JOG:EL,-5" title="Elevație −5°">EL −</button>
+        <button data-cmd="JOG:EL,5" title="Elevație +5°">EL +</button>
+      </div>
+      <label class="lbl" for="veh-select">Mișcare vehicul</label>
+      <select id="veh-select"></select>
       <label class="check"><input type="checkbox" id="veh-send" checked> Trimite VEH (înlocuiește MPU)</label>
-      <label class="check"><input type="checkbox" id="comp" checked> Compensare înclinare activă</label>
-    </section>
-    <section class="panel" data-icon="axis-arrow" data-title="Reglaj manual">
-      <div class="btn-grid">
-        <button data-cmd="JOG:AZ,-5" data-icon="arrow-left-bold">AZ −5°</button>
-        <button data-cmd="JOG:AZ,5" data-icon="arrow-right-bold">AZ +5°</button>
-        <button data-cmd="JOG:EL,-5" data-icon="arrow-down-bold">EL −5°</button>
-        <button data-cmd="JOG:EL,5" data-icon="arrow-up-bold">EL +5°</button>
-      </div>
+      <label class="check"><input type="checkbox" id="comp" checked> Compensare înclinare</label>
       <form id="cmd-form" class="row">
         <input id="cmd-input" type="text" placeholder="Comandă, ex. SAT:33591" aria-label="Comandă serială">
         <button type="submit">Trimite</button>
       </form>
+      <div class="row">
+        <button id="estop-btn" class="danger toggle" data-icon="alert-octagon">E-STOP</button>
+        <button id="limit-btn" class="warn toggle" data-icon="alert">Limitator AZ</button>
+      </div>
+      <div class="lbl" id="safety-note">E-STOP și limitatorul: doar în simularea internă.</div>
+      <details id="link-box">
+        <summary class="lbl">Legătură</summary>
+        <select id="link-select" aria-label="Legătură"></select>
+        <input id="port-input" type="text" placeholder="COM3 sau /dev/ttyUSB0" hidden>
+        <button id="link-btn" data-icon="lan-connect">Conectează</button>
+        <div id="link-status" class="lbl">—</div>
+      </details>
     </section>
-    <section class="panel" data-icon="alert-octagon" data-title="Siguranță">
-      <button id="estop-btn" class="danger toggle" data-icon="alert-octagon">E-STOP (simulare)</button>
-      <button id="limit-btn" class="toggle" data-icon="alert">Injectează limitator AZ</button>
-      <div class="small" id="safety-note">Disponibil doar în simularea internă; pe placă E-STOP e un buton fizic.</div>
+
+    <section class="block grow" id="log-block">
+      <h2>Jurnal</h2>
+      <div id="log"></div>
     </section>
   </aside>
 
-  <section class="panel big" id="p-globe" data-icon="earth" data-title="Glob · orbită, urmă la sol, con de vizibilitate">
-    <div class="view" id="globe"></div>
-  </section>
-  <section class="panel big" id="p-sky" data-icon="radar" data-title="Harta cerului · pasaj, satelit, antenă">
-    <div class="view"><canvas id="sky"></canvas></div>
-  </section>
-  <section class="panel big" id="p-veh" data-icon="car-side" data-title="Vehicul și piedestal (live)">
-    <div class="view" id="vehicle"></div>
-    <div class="legend"><span><i class="sw" style="background:var(--second)"></i>axa antenei</span><span><i class="sw" style="background:var(--accent)"></i>direcția spre satelit</span></div>
-  </section>
-  <section class="panel big" id="p-charts" data-icon="chart-line" data-title="Grafice · ultimele 2 minute">
-    <div class="charts">
-      <div class="chart" id="ch-err"></div>
-      <div class="chart" id="ch-speed"></div>
-      <div class="chart" id="ch-att"></div>
-    </div>
-  </section>
-
   <aside id="right">
-    <section class="panel" id="p-passes" data-icon="table" data-title="Următoarele pasaje">
+    <section class="block" id="sky-block">
+      <h2>Cer · pasaj, satelit, antenă</h2>
+      <div class="view sq"><canvas id="sky"></canvas></div>
+    </section>
+    <section class="block" id="veh-block">
+      <h2>Vehicul și piedestal</h2>
+      <div class="view" id="vehicle"></div>
+      <div class="legend"><span><i style="border-color:var(--second)"></i>axa antenei</span><span><i style="border-color:var(--accent)"></i>direcția spre satelit</span></div>
+    </section>
+    <section class="block" id="tm-block">
+      <h2>Telemetrie · 2 minute</h2>
+      <div class="tabs" id="chart-tabs">
+        <button class="tab on" data-chart="err">Eroare</button>
+        <button class="tab" data-chart="speed">Viteză axe</button>
+        <button class="tab" data-chart="att">Înclinare</button>
+      </div>
+      <div class="charts">
+        <div class="chart" id="ch-err"></div>
+        <div class="chart" id="ch-speed" hidden></div>
+        <div class="chart" id="ch-att" hidden></div>
+      </div>
+    </section>
+    <section class="block" id="pass-block">
       <div class="tabs">
         <button class="tab on" data-tab="passes">Pasaje</button>
         <button class="tab" data-tab="results">Rezultate SQLite</button>
       </div>
       <div class="tabbody" id="tab-passes">
-        <table class="tbl"><thead><tr><th>AOS</th><th>LOS</th><th>Max el</th><th>Durată</th><th>Az</th><th title="Diferența față de răsăritul calculat de skyfield">Δ sky</th></tr></thead><tbody id="passes-body"></tbody></table>
+        <table class="tbl"><thead><tr><th>AOS</th><th>LOS</th><th>Max</th><th>Durată</th><th>Az</th><th title="Diferența față de răsăritul calculat de skyfield">Δ sky</th></tr></thead><tbody id="passes-body"></tbody></table>
       </div>
       <div class="tabbody" id="tab-results" hidden>
         <table class="tbl"><thead><tr><th>LOS</th><th>Sat</th><th>Comp.</th><th>Vit.</th><th>Vehicul</th><th>Max</th><th>RMS</th></tr></thead><tbody id="results-body"></tbody></table>
-        <div class="small" id="results-db"></div>
+        <div class="lbl" id="results-db"></div>
       </div>
     </section>
-    <section class="panel grow" data-icon="text-box-outline" data-title="Jurnal de evenimente">
-      <div id="log"></div>
-    </section>
   </aside>
-</main>
+
+  <footer id="bottom">
+    <div id="timeline">
+      <div class="tl-track"><div class="tl-fill" id="tl-fill"></div><div class="tl-now" id="tl-now"></div></div>
+      <div id="tl-marks"></div>
+      <div class="tl-note lbl" id="tl-note"></div>
+    </div>
+    <div id="gauges"></div>
+  </footer>
+</div>
 <script src="/static/vendor/uplot/uPlot.iife.min.js"></script>
 <script type="module" src="/static/app.js"></script>
 </body>

@@ -291,6 +291,9 @@ network), `--no-browser`, `--db <file.sqlite>`.
                 ◄──commands───  link, SQLite, skyfield      ◄──buttons───  three.js, uPlot
 ```
 
+The page uses a mission control layout: the globe fills the screen, a T−/T+ clock counts down to
+AOS, a timeline shows AOS, maximum elevation and LOS, and ring gauges show the antenna and vehicle.
+
 What the page shows:
 
 - **3D globe** (three.js): the Earth, the orbit, the ground track, the visibility cone and the
@@ -577,4 +580,4 @@ Differences between the Wokwi circuit and the physical one (Wokwi doesn't have e
   Sensor and BusIO) and SGP4 Vallado (bundled in `lib/sgp4_vallado`, license in the same folder).
 - Globe coastlines: Natural Earth 1:110m (public domain).
 - Web page libraries, copied into `ground_station/polaris_gs/web/vendor` so the page works offline:
-  three.js 0.170.0 (MIT), uPlot 1.6.31 (MIT), Material Design Icons via @mdi/js 7.4.47 (Pictogrammers Free License, icons under Apache 2.0).
+  three.js 0.170.0 (MIT), uPlot 1.6.31 (MIT), Barlow and JetBrains Mono fonts (SIL OFL), Material Design Icons via @mdi/js 7.4.47 (Pictogrammers Free License, icons under Apache 2.0).

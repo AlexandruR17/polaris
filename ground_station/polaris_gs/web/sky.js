@@ -24,9 +24,8 @@ export class SkyPlot {
     }
     const g = cv.getContext("2d"), c = this.css;
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
-    g.fillStyle = c.bg;
-    g.fillRect(0, 0, w, h);
-    const R = Math.min(w, h) / 2 - 26, cx = w / 2, cy = h / 2 + 4;
+    g.clearRect(0, 0, w, h);
+    const R = Math.min(w, h) / 2 - 22, cx = w / 2, cy = h / 2 + 2;
     const P = (az, el) => {
       const r = (90 - Math.max(-5, Math.min(90, el))) / 90 * R;
       return [cx + r * Math.sin(az * D2R), cy - r * Math.cos(az * D2R)];

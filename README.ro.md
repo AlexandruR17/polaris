@@ -289,6 +289,10 @@ aceeași rețea), `--no-browser`, `--db <fișier.sqlite>`.
                 ◄──comenzi────  legătură, SQLite, skyfield  ◄──butoane───  three.js, uPlot
 ```
 
+Pagina are un aspect de centru de control al misiunii: globul ocupă tot ecranul, un ceas T−/T+
+numără până la AOS, o bandă de timp arată AOS, elevația maximă și LOS, iar cadrane circulare arată
+antena și vehiculul.
+
 Ce arată pagina:
 
 - **Glob 3D** (three.js): Pământul, orbita, urma la sol, conul de vizibilitate și satelitul.
@@ -570,5 +574,5 @@ Diferențe între circuitul Wokwi și cel fizic (Wokwi nu are toate piesele):
   Sensor și BusIO) și SGP4 Vallado (inclus în `lib/sgp4_vallado`, licența în același folder).
 - Conturul continentelor de pe glob: Natural Earth 1:110m (domeniu public).
 - Bibliotecile paginii web, copiate în `ground_station/polaris_gs/web/vendor` ca pagina să meargă
-  fără internet: three.js 0.170.0 (MIT), uPlot 1.6.31 (MIT), Material Design Icons prin @mdi/js
+  fără internet: three.js 0.170.0 (MIT), uPlot 1.6.31 (MIT), fonturile Barlow și JetBrains Mono (SIL OFL), Material Design Icons prin @mdi/js
   7.4.47 (Pictogrammers Free License, iconițele sub Apache 2.0).

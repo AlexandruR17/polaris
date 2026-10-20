@@ -29,31 +29,50 @@ export class GlobeView {
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(40, 1, 0.01, 100);
     this.scene.add(this.camera);
-    this.camera.add(new THREE.DirectionalLight(0xffffff, 2.2));
-    this.scene.add(new THREE.AmbientLight(0xffffff, 0.9));
+    this.camera.add(new THREE.DirectionalLight(0xffffff, 1.6));
+    this.scene.add(new THREE.AmbientLight(0xffffff, 0.6));
     // ECEF inside this group (z = north pole), three.js is y-up
     this.earth = new THREE.Group();
     this.earth.rotation.x = -Math.PI / 2;
     this.scene.add(this.earth);
     this.mats = [];
 
+    const g = css.globe;
     this.earth.add(new THREE.Mesh(new THREE.SphereGeometry(0.995, 96, 48).rotateX(Math.PI / 2),
-      new THREE.MeshPhongMaterial({ color: 0x132544, shininess: 8 })));
+      new THREE.MeshPhongMaterial({ color: g.earth, shininess: 6 })));
+    // thin atmosphere: a back-face shell that brightens towards the limb
+    this.earth.add(new THREE.Mesh(new THREE.SphereGeometry(1.06, 96, 48), new THREE.ShaderMaterial({
+      uniforms: { c: { value: new THREE.Color(g.glow) } },
+      vertexShader: "varying vec3 vN; varying vec3 vV; void main(){ vec4 mv = modelViewMatrix * vec4(position,1.0); vN = normalize(normalMatrix * normal); vV = normalize(-mv.xyz); gl_Position = projectionMatrix * mv; }",
+      fragmentShader: "uniform vec3 c; varying vec3 vN; varying vec3 vV; void main(){ float f = pow(1.0 - abs(dot(vN, vV)), 3.0); gl_FragColor = vec4(c, f * 0.55); }",
+      side: THREE.BackSide, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false,
+    })));
+    // star field far behind, fixed seed so it never jumps
+    let seed = 7;
+    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    const stars = [];
+    for (let i = 0; i < 1600; i++) {
+      const u = rnd() * 2 - 1, a = rnd() * 2 * Math.PI, r = 40;
+      stars.push(r * Math.sqrt(1 - u * u) * Math.cos(a), r * Math.sqrt(1 - u * u) * Math.sin(a), r * u);
+    }
+    const sg = new THREE.BufferGeometry();
+    sg.setAttribute("position", new THREE.Float32BufferAttribute(stars, 3));
+    this.scene.add(new THREE.Points(sg, new THREE.PointsMaterial({ color: 0xffffff, size: 1.3, sizeAttenuation: false, transparent: true, opacity: 0.55 })));
     const grat = [];
     for (let lat = -60; lat <= 60; lat += 30) for (let lon = -180; lon < 180; lon += 2) grat.push(llToXyz(lat, lon, 1.001), llToXyz(lat, lon + 2, 1.001));
     for (let lon = -180; lon < 180; lon += 30) for (let lat = -90; lat < 90; lat += 2) grat.push(llToXyz(lat, lon, 1.001), llToXyz(lat + 2, lon, 1.001));
-    this.earth.add(this._segments(grat, 0x22355a, 1));
+    this.earth.add(this._segments(grat, g.grid, g.gridOpacity));
     fetch("/assets/coastline_110m.json").then(r => r.json()).then(j => {
       const segs = [];
       for (const ln of j.lines) for (let i = 1; i < ln.length; i++) segs.push(llToXyz(ln[i - 1][1], ln[i - 1][0], 1.002), llToXyz(ln[i][1], ln[i][0], 1.002));
-      this.earth.add(this._segments(segs, 0x6f87b3, 1));
+      this.earth.add(this._segments(segs, g.coast, g.coastOpacity));
     });
 
-    const st = new THREE.Mesh(new THREE.SphereGeometry(0.02, 16, 12), new THREE.MeshBasicMaterial({ color: css.accent }));
+    const st = new THREE.Mesh(new THREE.SphereGeometry(0.018, 16, 12), new THREE.MeshBasicMaterial({ color: g.station }));
     st.position.set(...station.map(c => c * 1.004));
     this.earth.add(st);
 
-    this.orbit = this._thick(0xc9d6ee, 1.5, 0.8);
+    this.orbit = this._thick(g.orbit, 1.2, 0.55);
     this.track = this._thick(css.accent, 2.5);
     this.footprint = this._thick(css.second, 2.5);
     this.link = this._thick(css.accent, 2);
@@ -63,13 +82,14 @@ export class GlobeView {
     this.earth.add(this.sat);
 
     // camera: distance 4.2, elevation 32 deg, above the station longitude + 15 deg
-    const lat = 32, lon = 26.05 + 15, d = 3.5;
+    const lat = 30, lon = 26.05 + 12, d = g.distance;
     const p = llToXyz(lat, lon, d);
     this.camera.position.set(p[0], p[2], -p[1]);
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enablePan = false;
     this.controls.minDistance = 1.6;
     this.controls.maxDistance = 14;
+    this.controls.autoRotate = false;
     this.controls.enableDamping = true;
     this.controls.update();
 

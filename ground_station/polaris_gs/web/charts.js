@@ -7,7 +7,7 @@ export class Charts {
     this.buf = { t: [], err: [], mode: [], az: [], el: [], roll: [], pitch: [] };
     this.dirty = false;
     const axis = (label) => ({
-      stroke: css.text2, label, labelSize: 16, labelFont: "12px " + css.font, font: "11px " + css.font,
+      stroke: css.text2, label, labelSize: 16, labelFont: "11px " + css.font, font: "10px " + css.mono,
       grid: { stroke: css.grid, width: 1 }, ticks: { stroke: css.border, width: 1 }, size: 44, space: 18,
     });
     const xAxis = { ...axis(), label: undefined, space: 50, values: (u, v) => v.map(x => x + " s") };
@@ -37,7 +37,7 @@ export class Charts {
     };
     const s = (label, stroke, dash) => ({ label, stroke, width: 2, dash, points: { show: false }, spanGaps: false });
     this.errChart = make(els.err, "Eroare de pointare", "grade",
-      [s("eroare", css.accent), { ...s("prag 1°", css.muted, [5, 4]), width: 1 }],
+      [s("eroare", css.text), { ...s("prag 1°", css.muted, [5, 4]), width: 1 }],
       () => [0, this.errTop()]);
     this.speedChart = make(els.speed, "Viteza axelor", "°/s",
       [s("azimut", css.second), s("elevație", css.accent)], (u, lo, hi) => sym(lo, hi, 5));

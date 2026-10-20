@@ -44,19 +44,20 @@ def main():
             pg.on("console", lambda m: errors.append(m.text) if m.type == "error" else None)
             pg.on("pageerror", lambda e: errors.append(str(e)))
             pg.goto(f"http://127.0.0.1:{port}/")
-            pg.wait_for_function("document.querySelector('#chip-state .val').textContent.includes('AȘTEPTARE')",
+            pg.wait_for_function("document.querySelector('#state-text').textContent.includes('Așteptare')",
                                  timeout=30000)
             time.sleep(4.0)                     # orbit and passes arrive at 2 Hz
             pg.screenshot(path=str(out / "dashboard_wait.png"))
             pg.select_option("#veh-select", "bumpy")
             pg.click("#mode-btns button[data-mode=DEMO]")
-            pg.wait_for_function("document.querySelector('#chip-state .val').textContent.includes('URMĂRIRE')",
+            pg.wait_for_function("document.querySelector('#state-text').textContent.includes('Urmărire')",
                                  timeout=60000)
             time.sleep(8.0)
             pg.screenshot(path=str(out / "dashboard_track.png"))
             pg.wait_for_function("document.querySelector('#log').textContent.includes('LOS')", timeout=120000)
             time.sleep(3.0)
             pg.click(".tab[data-tab=results]")
+            pg.click(".tab[data-chart=att]")
             time.sleep(0.5)
             pg.screenshot(path=str(out / "dashboard_after_pass.png"))
             pg.set_viewport_size({"width": 390, "height": 844})

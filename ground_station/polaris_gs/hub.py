@@ -293,7 +293,7 @@ class GroundStation:
         rows = []
         for p in ps:
             diff = min((abs(r - p.aos) for r in rises), default=None) if p.los else None
-            rows.append({"aos": p.aos, "los": p.los, "max_el": round(p.max_el, 1), "aos_az": round(p.aos_az),
+            rows.append({"aos": p.aos, "los": p.los, "tmax": p.tmax, "max_el": round(p.max_el, 1), "aos_az": round(p.aos_az),
                          "dur_min": round((p.los - p.aos) / 60, 1) if p.los else None,
                          "sky_diff_s": round(diff, 1) if diff is not None else None, "current": p is cur})
         return {"t": "passes", "sat": sat.catnr, "rows": rows, "sky": sky}
