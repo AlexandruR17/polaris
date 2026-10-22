@@ -93,7 +93,7 @@ export class VehicleView {
     grid.material.opacity = 0.35;
     this.scene.add(grid);
     const north = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0.01), new THREE.Vector3(0, 7, 0.01)]);
-    this.world.add(new THREE.Line(north, new THREE.LineBasicMaterial({ color: css.muted })));
+    this.world.add(new THREE.Line(north, new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.4 })));
     const n = textSprite("N", css.text2);
     n.position.set(0, 7.6, 0.3);
     this.world.add(n);

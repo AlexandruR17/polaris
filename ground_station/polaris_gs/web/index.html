@@ -5,6 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>POLARIS Ground Station</title>
 <link rel="icon" id="favicon" href="data:,">
+<script>
+  // hide the HUD before the first paint when the one-time intro will run
+  try {
+    var q = new URLSearchParams(location.search).get("intro");
+    if (q === "1" || (q !== "0" && localStorage.getItem("polaris.introSeen") !== "1"))
+      document.documentElement.classList.add("intro-pending");
+  } catch (e) {}
+</script>
 <link rel="stylesheet" href="/static/vendor/fonts/fonts.css">
 <link rel="stylesheet" href="/static/vendor/uplot/uPlot.min.css">
 <link rel="stylesheet" href="/static/style.css">
@@ -28,6 +36,7 @@
     <div class="topright">
       <div><div class="lbl">Ora UTC</div><div class="mid mono" id="utc">--:--:--</div></div>
       <div><div class="lbl">Legătură</div><div class="mid" id="link-mini"><span class="dot"></span>—</div></div>
+      <button id="intro-btn" class="ghost" type="button" title="Revezi prezentarea de început">Intro</button>
       <div id="server" class="lbl"></div>
     </div>
   </header>

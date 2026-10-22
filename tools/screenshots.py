@@ -43,7 +43,23 @@ def main():
             pg = b.new_page(viewport={"width": 1920, "height": 1080})
             pg.on("console", lambda m: errors.append(m.text) if m.type == "error" else None)
             pg.on("pageerror", lambda e: errors.append(str(e)))
-            pg.goto(f"http://127.0.0.1:{port}/")
+            # the one-time intro: title, then the GO / NO-GO poll, then the reveal
+            pg.goto(f"http://127.0.0.1:{port}/?intro=1")
+            time.sleep(3.4)
+            pg.screenshot(path=str(out / "intro_title.png"))
+            pg.wait_for_function("[...document.querySelectorAll('.i-row .v')].filter(v => v.textContent !== '…').length >= 5",
+                                 timeout=30000)
+            time.sleep(0.6)
+            pg.screenshot(path=str(out / "intro_poll.png"))
+            pg.wait_for_function("document.body.classList.contains('reveal')", timeout=30000)
+            time.sleep(1.2)
+            pg.screenshot(path=str(out / "intro_reveal.png"))
+            pg.wait_for_function("!document.getElementById('intro')", timeout=30000)
+            time.sleep(1.0)
+            seen = pg.evaluate("localStorage.getItem('polaris.introSeen')")
+            assert seen == "1", "the intro must be marked as seen"
+            pg.goto(f"http://127.0.0.1:{port}/")      # second visit: no intro
+            assert pg.query_selector("#intro") is None, "the intro must run only once"
             pg.wait_for_function("document.querySelector('#state-text').textContent.includes('Așteptare')",
                                  timeout=30000)
             time.sleep(4.0)                     # orbit and passes arrive at 2 Hz

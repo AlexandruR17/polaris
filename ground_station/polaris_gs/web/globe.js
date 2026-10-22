@@ -128,6 +128,29 @@ export class GlobeView {
     line.visible = true;
   }
 
+  // intro: the camera arrives from far away while turning towards the station
+  flyIn(ms = 2800) {
+    const end = new THREE.Spherical().setFromVector3(this.camera.position);
+    const start = new THREE.Spherical(end.radius * 4.2, end.phi * 0.8, end.theta + 1.2);
+    const maxD = this.controls.maxDistance;
+    this.controls.maxDistance = 1000;
+    this.controls.enabled = false;
+    const t0 = performance.now();
+    return new Promise(resolve => {
+      const step = () => {
+        const k = Math.min(1, (performance.now() - t0) / ms);
+        const e = 1 - Math.pow(1 - k, 3);
+        const sp = new THREE.Spherical(start.radius + (end.radius - start.radius) * e,
+          start.phi + (end.phi - start.phi) * e, start.theta + (end.theta - start.theta) * e);
+        this.camera.position.setFromSpherical(sp);
+        this.camera.lookAt(0, 0, 0);
+        if (k < 1) requestAnimationFrame(step);
+        else { this.controls.maxDistance = maxD; this.controls.enabled = true; resolve(); }
+      };
+      step();
+    });
+  }
+
   resize() {
     const w = this.el.clientWidth, h = this.el.clientHeight;
     if (!w || !h) return;

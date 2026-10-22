@@ -289,6 +289,10 @@ aceeași rețea), `--no-browser`, `--db <fișier.sqlite>`.
                 ◄──comenzi────  legătură, SQLite, skyfield  ◄──butoane───  three.js, uPlot
 ```
 
+La prima vizită pagina rulează un intro scurt: titlul, ce face sistemul, un sondaj GO / NO-GO făcut
+din date reale și apoi apropierea globului. Rulează o singură dată pe browser; butonul INTRO sau
+`?intro=1` îl reiau, Esc îl sare.
+
 Pagina are un aspect de centru de control al misiunii: globul ocupă tot ecranul, un ceas T−/T+
 numără până la AOS, o bandă de timp arată AOS, elevația maximă și LOS, iar cadrane circulare arată
 antena și vehiculul.

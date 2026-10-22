@@ -291,6 +291,10 @@ network), `--no-browser`, `--db <file.sqlite>`.
                 ◄──commands───  link, SQLite, skyfield      ◄──buttons───  three.js, uPlot
 ```
 
+On the first visit the page plays a short intro (title, what the system does, a GO / NO-GO poll built
+from live data, then the globe flies in). It runs once per browser; the INTRO button or `?intro=1`
+replays it, Esc skips it.
+
 The page uses a mission control layout: the globe fills the screen, a T−/T+ clock counts down to
 AOS, a timeline shows AOS, maximum elevation and LOS, and ring gauges show the antenna and vehicle.
 

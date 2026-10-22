@@ -5,6 +5,7 @@ import { GlobeView } from "./globe.js";
 import { VehicleView } from "./vehicle.js";
 import { SkyPlot } from "./sky.js";
 import { Charts } from "./charts.js";
+import { runIntro, shouldRun } from "./intro.js";
 
 const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 const CSS = {
@@ -119,6 +120,7 @@ try {
 
 // ------------------------------------------------------------ connection
 let ws = null, hello = null, isSim = false, curPass = null, lastTm = null;
+let linkOk = false, xdiff = null, flyPending = false;
 function send(msg) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(msg)); }
 function cmd(text) { send({ op: "cmd", text }); }
 
@@ -144,6 +146,7 @@ const HANDLERS = {
     if (!globe) {
       try {
         globe = new GlobeView($("globe"), CSS, m.station.ecef, m.mask_el);
+        if (flyPending) { flyPending = false; globe.flyIn(); }
       } catch (e) {
         $("globe").innerHTML = `<p class="lbl" style="padding:24px">WebGL indisponibil: ${esc(e.message)}</p>`;
       }
@@ -168,12 +171,13 @@ const HANDLERS = {
       }
       setWarp(m.default_warp);
     }
+    linkOk = m.link.ok;
     status(m.link.text, m.link.ok);
     settings(m);
     charts.reset([]);
     $("log").innerHTML = "";
   },
-  status(m) { isSim = m.sim; status(m.text, m.ok); settings(null); },
+  status(m) { isSim = m.sim; linkOk = m.ok; status(m.text, m.ok); settings(null); },
   settings(m) { settings(m); },
   history(m) { charts.reset(m.rows); },
   tm(m) { telemetry(m.d); },
@@ -181,6 +185,7 @@ const HANDLERS = {
   orbit(m) { if (globe) globe.setOrbit(m.pos, m.track); },
   passes(m) { passes(m); },
   xcheck(m) {
+    xdiff = m.diff;
     const ok = m.diff < 0.1;
     $("kv-x").innerHTML = `<span style="color:${ok ? CSS.good : CSS.critical}">Δ ${m.diff.toFixed(3)}°</span>`;
   },
@@ -377,3 +382,13 @@ document.querySelectorAll(".tab[data-chart]").forEach(t => {
 });
 
 connect();
+
+// ------------------------------------------------------------ intro (first visit, or the INTRO button)
+function startIntro() {
+  runIntro(() => ({ hello, linkOk, isSim, tm: lastTm, xdiff }), fast => {
+    if (fast) return;
+    if (globe) globe.flyIn(); else flyPending = true;
+  });
+}
+$("intro-btn").onclick = startIntro;
+if (shouldRun()) startIntro();
