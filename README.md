@@ -143,9 +143,10 @@ events:
 {"ev":"BOOT"} {"ev":"MODE","from":..,"to":..} {"ev":"HOME_OK"} {"ev":"PASS",..} {"ev":"AOS",..}
 {"ev":"LOS","max_err":..,"rms_err":..,"n":..,"comp":..,"warp":..} {"ev":"KEYHOLE"} {"ev":"RATE_LIMIT"}
 {"ev":"WRAP"} {"ev":"ESTOP"} {"ev":"FAULT","reason":..} {"ev":"ACK"} {"ev":"CMD"} {"ev":"ERR"} {"ev":"INFO"}
+{"ev":"TLE","sat":..,"name":..,"l1":..,"l2":..}
 commands (plain text, one line):
 SAT:25544   MODE:AUTO|MANUAL|DEMO|IDLE|STOW   WARP:10|30|60   VEH:roll,pitch,yaw   VEH:OFF
-JOG:AZ,5.0   HOME   STOW   ACK   COMP:0|1
+JOG:AZ,5.0   HOME   STOW   ACK   COMP:0|1   TLE
 ```
 
 ## 3. Pin table
@@ -313,7 +314,8 @@ What the page shows:
 - **Controls**: link, satellite, mode, warp, HOME, STOW, ACK, vehicle profile, compensation
   on/off, JOG, a free serial command field, and (simulation only) E-STOP and limit switch fault.
 - **Event log**.
-- **skyfield cross-check** in the header: the server independently recomputes the satellite
+- **skyfield cross-check** in the header: the server takes the exact TLE the controller uses (the
+  `TLE` event, or the `TLE` command when the page starts later) and independently recomputes the satellite
   position with skyfield and shows the difference to the firmware (≈ 0.05°, limited by telemetry
   rounding).
 - At every LOS the pass result is saved to **SQLite** (`~/.polaris/polaris.sqlite`), with or

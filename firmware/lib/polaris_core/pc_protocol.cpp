@@ -63,9 +63,12 @@ const char* parseCommand(const char* line, Command& out) {
   }
   upper(name);
 
-  if (!strcmp(name, "HOME") || !strcmp(name, "STOW") || !strcmp(name, "ACK")) {
+  if (!strcmp(name, "HOME") || !strcmp(name, "STOW") || !strcmp(name, "ACK") || !strcmp(name, "TLE")) {
     if (rest[0]) return "no args";
-    out.cmd = !strcmp(name, "HOME") ? Cmd::HOME : (!strcmp(name, "STOW") ? Cmd::STOW : Cmd::ACK);
+    if (!strcmp(name, "HOME")) out.cmd = Cmd::HOME;
+    else if (!strcmp(name, "STOW")) out.cmd = Cmd::STOW;
+    else if (!strcmp(name, "ACK")) out.cmd = Cmd::ACK;
+    else out.cmd = Cmd::TLE;
     return nullptr;
   }
   if (!strcmp(name, "SAT")) {

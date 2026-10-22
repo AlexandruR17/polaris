@@ -93,3 +93,47 @@ def test_vehicle_stream_is_not_logged(tmp_path):
     hub.on_line('{"ev":"CMD","cmd":"VEH:1.0,2.0,90.0"}')
     hub.on_line('{"ev":"CMD","cmd":"MODE:DEMO"}')
     assert [m["d"]["cmd"] for m in out if m["t"] == "ev"] == ["MODE:DEMO"]
+
+
+def _with_checksum(line):
+    s = sum(int(c) if c.isdigit() else (1 if c == "-" else 0) for c in line[:68])
+    return line[:68] + str(s % 10)
+
+
+def test_skyfield_check_uses_the_controllers_tle():
+    """The controller downloaded a fresher TLE than the stored one (the Wokwi case):
+    the station must ask for it and check skyfield against the same elements."""
+    import time
+
+    from polaris_gs.core.tle_data import FALLBACK_TLE
+    from polaris_gs.link import SimLink
+
+    out = []
+    hub = GroundStation(out.append)
+    hub.connect("sim")
+    try:
+        name, l1, l2 = FALLBACK_TLE[25544]
+        epoch = float(l1[18:32]) + 0.5                 # a different, valid element set
+        new_l1 = _with_checksum(l1[:18] + f"{epoch:14.8f}" + l1[32:])
+        deadline = time.time() + 15     # after boot: the station missed the announcement
+        while (hub.store.last is None or hub.store.last["mode"] in ("BOOT", "HOMING")) and time.time() < deadline:
+            time.sleep(0.1)
+        link = hub.link
+        assert isinstance(link, SimLink)
+        with link._lock:
+            assert link.rig.ctl.load_tle(25544, name, new_l1, l2, False, time.time(), False)
+        diffs = []
+        deadline = time.time() + 20
+        while time.time() < deadline:
+            time.sleep(0.3)
+            hub.tick_slow()
+            x = hub.last_xcheck
+            if x and x["diff"] is not None:
+                diffs.append(x["diff"])
+                if hub.xcheck.tles[25544][1] == new_l1:
+                    break
+        assert hub.xcheck.tles[25544][1] == new_l1, "the station never received the controller's TLE"
+        assert diffs[-1] < 0.1
+        assert any(m["t"] == "xcheck" and m["diff"] is None for m in out)   # it said "waiting"
+    finally:
+        hub.stop()

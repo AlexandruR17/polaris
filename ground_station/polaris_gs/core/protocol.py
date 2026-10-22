@@ -12,7 +12,7 @@ TELEMETRY_KEYS = ("t_utc", "sat", "sat_az", "sat_el", "range_km", "cmd_az", "cmd
                   "next_aos", "next_los", "max_el")
 
 EVENTS = ("BOOT", "AOS", "LOS", "HOME_OK", "ESTOP", "FAULT", "MODE", "TLE_OK",
-          "TLE_FALLBACK", "KEYHOLE", "RATE_LIMIT", "WRAP", "PASS", "ACK", "CMD", "ERR", "INFO")
+          "TLE_FALLBACK", "TLE", "KEYHOLE", "RATE_LIMIT", "WRAP", "PASS", "ACK", "CMD", "ERR", "INFO")
 
 STATES = ("BOOT", "HOMING", "IDLE", "WAIT_AOS", "ACQUIRE", "TRACK", "STOW", "MANUAL",
           "DEMO", "ESTOP", "FAULT")
@@ -37,7 +37,7 @@ def parse_command(line):
     name, _, rest = s.partition(":")
     name = name.strip().upper()
     rest = rest.strip()
-    if name in ("HOME", "STOW", "ACK"):
+    if name in ("HOME", "STOW", "ACK", "TLE"):
         if rest:
             raise ValueError("no args")
         return Command(name)

@@ -172,6 +172,7 @@ static int runParse() {
       case proto::Cmd::HOME: printf("HOME\n"); break;
       case proto::Cmd::STOW: printf("STOW\n"); break;
       case proto::Cmd::ACK: printf("ACK\n"); break;
+      case proto::Cmd::TLE: printf("TLE\n"); break;
       case proto::Cmd::COMP: printf("COMP %d\n", c.comp ? 1 : 0); break;
       default: printf("NONE\n"); break;
     }

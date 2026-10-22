@@ -99,7 +99,7 @@ def main():
             break
     proc.terminate()
     print(f"telemetry lines: {telem}, events: {len(events)}")
-    need = ["BOOT", "TLE_FALLBACK", "HOMING", "HOME_OK", "MANUAL", "STOW", "ACQUIRE", "TRACK"]
+    need = ["BOOT", "TLE_FALLBACK", "TLE", "HOMING", "HOME_OK", "MANUAL", "STOW", "ACQUIRE", "TRACK"]
     missing = [e for e in need if e not in events]
     print("RESULT:", "PASS" if ok and not missing and telem > 50 else f"FAIL missing={missing}")
     return 0 if ok and not missing else 1

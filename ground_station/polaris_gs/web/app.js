@@ -31,7 +31,7 @@ const EVENT_RO = {
   BOOT: "Pornire firmware", AOS: "AOS: satelitul a răsărit", LOS: "LOS: satelitul a apus", HOME_OK: "Homing reușit",
   ESTOP: "OPRIRE DE URGENȚĂ", FAULT: "DEFECT", MODE: "Stare", TLE_OK: "TLE descărcat", TLE_FALLBACK: "TLE de rezervă (vechi)",
   KEYHOLE: "Keyhole", RATE_LIMIT: "Limită de viteză", WRAP: "Derulare cablu", PASS: "Pasaj calculat", ACK: "Confirmare",
-  CMD: "Comandă", ERR: "Eroare comandă", INFO: "Info",
+  CMD: "Comandă", ERR: "Eroare comandă", INFO: "Info", TLE: "TLE în uz",
 };
 const EVENT_COLOR = {
   ESTOP: CSS.critical, FAULT: CSS.critical, ERR: CSS.critical, AOS: CSS.good, HOME_OK: CSS.good,
@@ -186,6 +186,7 @@ const HANDLERS = {
   passes(m) { passes(m); },
   xcheck(m) {
     xdiff = m.diff;
+    if (m.diff == null) { $("kv-x").innerHTML = `<span style="color:${CSS.text2}">${esc(m.note || "—")}</span>`; return; }
     const ok = m.diff < 0.1;
     $("kv-x").innerHTML = `<span style="color:${ok ? CSS.good : CSS.critical}">Δ ${m.diff.toFixed(3)}°</span>`;
   },
@@ -337,6 +338,7 @@ function logEvent(d) {
   const ev = d.ev;
   let rest = Object.entries(d).filter(([k]) => k !== "ev" && k !== "_wall").map(([k, v]) => `${k}=${v}`).join(", ");
   if (ev === "MODE") rest = `${STATE_RO[d.from] || d.from} → ${STATE_RO[d.to] || d.to}`;
+  if (ev === "TLE") rest = `sat=${d.sat}, ${String(d.name || "").trim()}, epocă ${String(d.l1 || "").slice(18, 32)}`;
   const t = new Date((d._wall || Date.now() / 1000) * 1000).toISOString().slice(11, 19);
   const log = $("log");
   const atBottom = log.scrollHeight - log.scrollTop - log.clientHeight < 30;

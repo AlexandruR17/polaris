@@ -194,7 +194,7 @@ def test_wrap_and_rate_limit_match():
 # ------------------------------------------------------------ protocol
 COMMANDS = ["SAT:25544", "sat:33591", " MODE : demo ", "MODE:FAST", "WARP:30", "WARP:7", "WARP:",
             "VEH:1.5,-2.25,90", "VEH:off", "VEH:1,2", "VEH:50,0,0", "VEH:a,b,c", "VEH:nan,0,0",
-            "JOG:az,-12.5", "JOG:EL,90", "JOG:EL,90.5", "JOG:XY,1", "HOME", "HOME:1", "STOW", "ACK",
+            "JOG:az,-12.5", "JOG:EL,90", "JOG:EL,90.5", "JOG:XY,1", "HOME", "HOME:1", "STOW", "ACK", "TLE", "tle", "TLE:1",
             "COMP:0", "COMP:1", "COMP:2", "", "FOO", "SAT:", "SAT:12a", "SAT:1234567890"]
 
 

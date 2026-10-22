@@ -101,8 +101,22 @@ bool Controller::loadTle(long catnr, const char* name, const char* l1, const cha
     passTried_ = false;
     planValid_ = false;
     refreshLook(true);
+    if (announce) emitTle();
   }
   return true;
+}
+
+// The exact elements in use, so a ground station can check the same orbit
+void Controller::emitTle() {
+  const int i = slotIndex(satId_);
+  if (i < 0 || !slots_[i].loaded) return;
+  char name[sizeof(slots_[i].name)];
+  size_t n = 0;
+  for (const char* p = slots_[i].name; *p && n + 1 < sizeof(name); p++)
+    name[n++] = (*p == '"' || *p == '\\' || (unsigned char)*p < 32) ? '\'' : *p;
+  name[n] = 0;
+  emitf("{\"ev\":\"TLE\",\"sat\":%ld,\"name\":\"%s\",\"l1\":\"%s\",\"l2\":\"%s\"}", satId_, name,
+        slots_[i].l1, slots_[i].l2);
 }
 
 void Controller::tleDownloadFailed(long catnr, double tNow) {
@@ -112,6 +126,7 @@ void Controller::tleDownloadFailed(long catnr, double tNow) {
   orbit::Satellite probe;
   probe.init(slots_[i].name, slots_[i].l1, slots_[i].l2);
   emitf("{\"ev\":\"TLE_FALLBACK\",\"sat\":%ld,\"age_d\":%.1f}", catnr, probe.ageDays(tNow));
+  if (catnr == satId_) emitTle();
 }
 
 void Controller::selectSat(long id) {
@@ -133,6 +148,7 @@ void Controller::selectSat(long id) {
     mode_ = Mode::AUTO;
     enterWaitAos();
   }
+  emitTle();
 }
 
 // ---------------------------------------------------------------- satellite look
@@ -454,6 +470,7 @@ void Controller::command(const char* line) {
       if (!busy) applyMode();
       break;
     case proto::Cmd::ACK: ack(); break;
+    case proto::Cmd::TLE: emitTle(); break;
     case proto::Cmd::COMP:
       comp_ = c.comp;
       if (state_ == State::ACQUIRE || state_ == State::TRACK)

@@ -129,6 +129,7 @@ class Controller {
   void enterFault(const char* code);
   void ack();
   void selectSat(long id);
+  void emitTle();
   void computePass(double t);
   void buildPlan(double tFrom, double refAz);
   double planLeadAt(double t) const;

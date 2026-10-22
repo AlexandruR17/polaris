@@ -139,9 +139,10 @@ evenimente:
 {"ev":"BOOT"} {"ev":"MODE","from":..,"to":..} {"ev":"HOME_OK"} {"ev":"PASS",..} {"ev":"AOS",..}
 {"ev":"LOS","max_err":..,"rms_err":..,"n":..,"comp":..,"warp":..} {"ev":"KEYHOLE"} {"ev":"RATE_LIMIT"}
 {"ev":"WRAP"} {"ev":"ESTOP"} {"ev":"FAULT","reason":..} {"ev":"ACK"} {"ev":"CMD"} {"ev":"ERR"} {"ev":"INFO"}
+{"ev":"TLE","sat":..,"name":..,"l1":..,"l2":..}
 comenzi (text, o linie):
 SAT:25544   MODE:AUTO|MANUAL|DEMO|IDLE|STOW   WARP:10|30|60   VEH:roll,pitch,yaw   VEH:OFF
-JOG:AZ,5.0   HOME   STOW   ACK   COMP:0|1
+JOG:AZ,5.0   HOME   STOW   ACK   COMP:0|1   TLE
 ```
 
 ## 3. Tabelul de pini
@@ -314,7 +315,8 @@ Ce arată pagina:
   on/off, JOG, un câmp pentru orice comandă serială și (doar în simulare) E-STOP și defect de
   limitator.
 - **Jurnalul de evenimente**.
-- **Verificare skyfield** în antet: serverul recalculează independent poziția satelitului cu
+- **Verificare skyfield** în antet: serverul ia exact TLE-ul folosit de controller (evenimentul
+  `TLE`, sau comanda `TLE` când pagina pornește mai târziu) și recalculează independent poziția satelitului cu
   skyfield și afișează diferența față de firmware (≈ 0,05°, cât permite rotunjirea telemetriei).
 - La fiecare LOS, rezultatul pasajului se salvează în **SQLite** (`~/.polaris/polaris.sqlite`),
   cu sau fără compensare, ca să poată fi comparate.

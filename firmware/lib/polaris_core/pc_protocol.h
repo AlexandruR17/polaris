@@ -5,7 +5,7 @@
 
 namespace proto {
 
-enum class Cmd { NONE, SAT, MODE, WARP, VEH, VEH_OFF, JOG, HOME, STOW, ACK, COMP };
+enum class Cmd { NONE, SAT, MODE, WARP, VEH, VEH_OFF, JOG, HOME, STOW, ACK, COMP, TLE };
 
 struct Command {
   Cmd cmd = Cmd::NONE;

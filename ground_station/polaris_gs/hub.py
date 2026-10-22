@@ -62,6 +62,7 @@ class GroundStation:
         self.sats = {}
         self.sat_id = C.DEFAULT_SAT
         self.orbit_due = self.passes_due = 0.0
+        self.tle_query_at = 0.0
         self.last_orbit = self.last_passes = self.last_xcheck = None
         self._lock = threading.RLock()
         self.station = [c / WGS84_A for c in site_ecef(C.STATION_LAT_DEG, C.STATION_LON_DEG, C.STATION_ALT_M)]
@@ -185,8 +186,12 @@ class GroundStation:
             return
         d["_wall"] = time.time()
         ev = d["ev"]
-        if ev == "CMD" and str(d.get("cmd", "")).startswith("VEH"):
-            return  # 20 Hz vehicle stream, keep the log readable
+        if ev == "CMD" and str(d.get("cmd", "")).upper().startswith(("VEH", "TLE")):
+            return  # 20 Hz vehicle stream and our own TLE queries: keep the log readable
+        if ev == "TLE" and d.get("l1") and d.get("l2"):
+            # check skyfield against the elements the controller really uses
+            self.xcheck.set_tle(int(d["sat"]), str(d.get("name", "")).strip(), d["l1"], d["l2"])
+            self.orbit_due = self.passes_due = 0.0
         self.events.append(d)
         if ev == "LOS" and self.db:
             self.db.save_pass(d, self.link.name if self.link else "", self.veh_mode)
@@ -251,6 +256,15 @@ class GroundStation:
         if d is None:
             return
         sat = self._sat(d["sat"])
+        if sat is not None and abs(sat.age_days(d["t_utc_unix"]) - d["tle_age"]) > 0.15:
+            # not the controller's TLE (e.g. it downloaded a fresh one): ask for it
+            now = time.monotonic()
+            if now - self.tle_query_at > 10.0:
+                self.tle_query_at = now
+                self.send("TLE")
+            self.last_xcheck = {"t": "xcheck", "diff": None, "note": "aștept TLE"}
+            self.emit(self.last_xcheck)
+            return
         diff = self.xcheck.difference(d)
         if diff is not None:
             self.last_xcheck = {"t": "xcheck", "diff": round(diff, 4)}

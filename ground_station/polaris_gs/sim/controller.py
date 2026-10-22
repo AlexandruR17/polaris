@@ -236,7 +236,17 @@ class Controller:
             self.pass_tried = False
             self.plan_valid = False
             self.refresh_look(True)
+            if announce:
+                self.emit_tle()
         return True
+
+    def emit_tle(self):
+        """The exact elements in use, so a ground station can check the same orbit."""
+        s = self.slots.get(self.sat_id)
+        if s is None or not s["loaded"]:
+            return
+        name = "".join("'" if (ch in '"\\' or ord(ch) < 32) else ch for ch in s["name"])
+        self.emit('{"ev":"TLE","sat":%d,"name":"%s","l1":"%s","l2":"%s"}' % (self.sat_id, name, s["l1"], s["l2"]))
 
     def tle_download_failed(self, catnr, t_now):
         s = self.slots.get(catnr)
@@ -245,6 +255,8 @@ class Controller:
         s["tried"] = True
         probe = Satellite(s["name"], s["l1"], s["l2"])
         self.emit('{"ev":"TLE_FALLBACK","sat":%d,"age_d":%.1f}' % (catnr, probe.age_days(t_now)))
+        if catnr == self.sat_id:
+            self.emit_tle()
 
     def select_sat(self, sid):
         self.sat_id = sid
@@ -263,6 +275,7 @@ class Controller:
         if self.state in ("ACQUIRE", "TRACK", "WAIT_AOS", "DEMO"):
             self.mode = "AUTO"
             self.enter_wait_aos()
+        self.emit_tle()
 
     # ------------------------------------------------------------ look
     def refresh_look(self, reset):
@@ -562,6 +575,8 @@ class Controller:
                 self.apply_mode()
         elif n == "ACK":
             self.ack()
+        elif n == "TLE":
+            self.emit_tle()
         elif n == "COMP":
             self.comp = c.args[0]
             if self.state in ("ACQUIRE", "TRACK"):
