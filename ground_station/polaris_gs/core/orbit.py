@@ -187,45 +187,10 @@ class Satellite:
         return None
 
     def next_pass(self, t0, horizon_h=C.PASS_SEARCH_H, mask=C.MASK_EL_DEG):
-        horizon_s = horizon_h * 3600.0
-        el0 = self.elevation(t0)
-        if self.is_geo:
-            # geostationary: visible all the time or never, no search needed
-            if el0 <= mask:
-                return None
-            az0 = self.look(t0).az
-            return Pass(t0, None, t0, el0, az0, None)
-        if el0 > mask:
-            # pass in progress: walk back to AOS (max 30 min)
-            t = t0
-            aos = t0
-            while t > t0 - 1800.0:
-                t2 = t - 20.0
-                if self.elevation(t2) <= mask:
-                    aos = self._bisect(t2, t, mask)
-                    break
-                t = t2
-            else:
-                aos = t
-        else:
-            t, prev = t0, el0
-            aos = None
-            while t < t0 + horizon_s:
-                step = 60.0 if prev < -10.0 else 20.0
-                t2 = t + step
-                e2 = self.elevation(t2)
-                if e2 > mask:
-                    aos = self._bisect(t, t2, mask)
-                    break
-                t, prev = t2, e2
-            if aos is None:
-                return None
-        los = self._find_set(max(aos, t0), horizon_s, mask)
-        if los is None:
-            tmax, max_el = t0, self.elevation(t0)
-            return Pass(aos, None, tmax, max_el, self.look(aos).az, None)
-        tmax, max_el = self._max_el(aos, los)
-        return Pass(aos, los, tmax, max_el, self.look(aos).az, self.look(los).az)
+        s = PassSearch(self, t0, horizon_h, mask)
+        while not s.step(1 << 30):
+            pass
+        return s.result
 
     def passes(self, t0, count=5, horizon_h=48.0):
         out = []
@@ -240,6 +205,75 @@ class Satellite:
                 break
             t = p.los + 60.0
         return out
+
+
+class PassSearch:
+    """next_pass split into small steps, so a slow CPU never blocks its control
+    loop: step(budget) evaluates at most `budget` coarse samples; the final
+    refinement (AOS, LOS, maximum) runs in the call after the rise is found.
+    Same algorithm and budget accounting as PassSearch in pc_orbit.cpp."""
+
+    def __init__(self, sat, t0, horizon_h=C.PASS_SEARCH_H, mask=C.MASK_EL_DEG):
+        self.sat, self.t0, self.horizon_s, self.mask = sat, t0, horizon_h * 3600.0, mask
+        self.phase = "start"
+        self.result = None
+        self.t = self.prev = self.aos = 0.0
+
+    @property
+    def busy(self):
+        return self.phase != "done"
+
+    def cancel(self):
+        self.phase = "done"
+
+    def step(self, budget):
+        if self.phase == "done":
+            return True
+        sat, mask, t0 = self.sat, self.mask, self.t0
+        if self.phase == "refine":
+            aos = self.aos
+            los = sat._find_set(max(aos, t0), self.horizon_s, mask)
+            if los is None:
+                self.result = Pass(aos, None, t0, sat.elevation(t0), sat.look(aos).az, None)
+            else:
+                tmax, max_el = sat._max_el(aos, los)
+                self.result = Pass(aos, los, tmax, max_el, sat.look(aos).az, sat.look(los).az)
+            self.phase = "done"
+            return True
+        if self.phase == "start":
+            el0 = sat.elevation(t0)
+            budget -= 1
+            if sat.is_geo:
+                # geostationary: visible all the time or never, no search needed
+                if el0 > mask:
+                    self.result = Pass(t0, None, t0, el0, sat.look(t0).az, None)
+                self.phase = "done"
+                return True
+            self.t, self.prev = t0, el0
+            self.phase = "back" if el0 > mask else "fwd"
+        # pass in progress: walk back to AOS (max 30 min)
+        while self.phase == "back" and budget > 0:
+            if self.t <= t0 - 1800.0:
+                self.aos, self.phase = self.t, "refine"
+                break
+            t2 = self.t - 20.0
+            budget -= 1
+            if sat.elevation(t2) <= mask:
+                self.aos, self.phase = sat._bisect(t2, self.t, mask), "refine"
+                break
+            self.t = t2
+        while self.phase == "fwd" and budget > 0:
+            if self.t >= t0 + self.horizon_s:
+                self.phase = "done"
+                return True
+            t2 = self.t + (60.0 if self.prev < -10.0 else 20.0)
+            e2 = sat.elevation(t2)
+            budget -= 1
+            if e2 > mask:
+                self.aos, self.phase = sat._bisect(self.t, t2, mask), "refine"
+                break
+            self.t, self.prev = t2, e2
+        return False
 
 
 def parse_tle_text(text):

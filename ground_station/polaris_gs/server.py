@@ -38,7 +38,7 @@ def create_app(link="sim", db_path=None, online_tle=False):
     async def on_startup(app):
         state["loop"] = asyncio.get_running_loop()
         hub.connect(link)
-        state["tasks"] = [asyncio.create_task(_every(0.05, hub.tick_vehicle)),
+        state["tasks"] = [asyncio.create_task(_every(0.1, hub.tick_vehicle)),
                         asyncio.create_task(_every(0.5, hub.tick_slow, in_thread=True))]
 
     async def on_cleanup(app):

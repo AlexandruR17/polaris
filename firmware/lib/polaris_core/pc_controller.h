@@ -105,6 +105,7 @@ class Controller {
   double yaw() const { return yaw_; }
   const orbit::Pass& pass() const { return pass_; }
   bool tleFallback() const;
+  bool passSearching() const { return search_.busy(); }
   double tleAgeDays() const { return sat_.ready() ? sat_.ageDays(tSim_) : 0; }
   int warp() const { return demo_ ? warp_ : 1; }
   bool demo() const { return demo_; }
@@ -124,6 +125,7 @@ class Controller {
   void enterWaitAos();
   void enterTracking();
   void enterDemo();
+  void demoSearchDone();
   void endDemo();
   void enterEstop();
   void enterFault(const char* code);
@@ -131,6 +133,8 @@ class Controller {
   void selectSat(long id);
   void emitTle();
   void computePass(double t);
+  void servicePassSearch();
+  void finishPass();
   void buildPlan(double tFrom, double refAz);
   double planLeadAt(double t) const;
   double planAzAt(double t) const;
@@ -189,6 +193,9 @@ class Controller {
   orbit::Pass pass_{};
   uint32_t passTryMs_ = 0;
   bool passTried_ = false;
+  orbit::PassSearch search_;
+  bool searchDemo_ = false;
+  int demoTries_ = 0;
   bool planValid_ = false;
   int planN_ = 0;
   double planT0_ = 0, planDt_ = 1;

@@ -324,7 +324,7 @@ What the page shows:
 The page also works on a phone or tablet: the panels stack in one column.
 
 The vehicle profile ("Staționar" = stationary, "Drum denivelat" = bumpy road, "Viraj" = turn,
-"Pantă" = slope) sends `VEH` commands 20 times per second, as if the vehicle were moving. This
+"Pantă" = slope) sends `VEH` commands 10 times per second (only while the controller sends telemetry), as if the vehicle were moving. This
 tests the compensation without moving the MPU6050 sliders by hand.
 
 ## 6. Simulation without Wokwi

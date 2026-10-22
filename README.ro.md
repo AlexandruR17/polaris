@@ -324,7 +324,7 @@ Ce arată pagina:
 Pagina merge și pe telefon sau tabletă: panourile se așază unul sub altul.
 
 Profilul de vehicul („staționar”, „drum denivelat”, „viraj”, „pantă”) trimite comenzi `VEH`
-de 20 de ori pe secundă, ca și cum vehiculul s-ar mișca. Astfel se poate testa compensarea fără
+de 10 ori pe secundă (doar cât timp controllerul trimite telemetrie), ca și cum vehiculul s-ar mișca. Astfel se poate testa compensarea fără
 a muta manual glisoarele MPU6050.
 
 ## 6. Simulare fără Wokwi

@@ -9,6 +9,7 @@
 #include <Adafruit_MPU6050.h>
 #include <Arduino.h>
 #include <Wire.h>
+#include <esp_system.h>
 
 #include "hmi.h"
 #include "net.h"
@@ -138,6 +139,9 @@ static void controlTask(void*) {
     if (tick % 10 == 3) hmi::drawOled(controller);           // 5 Hz
     if (tick % 25 == 11) hmi::drawLcd(controller, in.tReal);  // 2 Hz
     tick++;
+    // a long tick (pass search, slow I2C) must still let the idle task run,
+    // otherwise the task watchdog resets the board
+    if ((TickType_t)(xTaskGetTickCount() - last) >= period) vTaskDelay(1);
   }
 }
 
@@ -152,6 +156,20 @@ static void networkTask(void*) {
   }
 }
 
+static const char* resetReason() {
+  switch (esp_reset_reason()) {
+    case ESP_RST_POWERON: return "POWERON";
+    case ESP_RST_SW: return "SOFTWARE";
+    case ESP_RST_PANIC: return "PANIC";
+    case ESP_RST_INT_WDT: return "INT_WDT";
+    case ESP_RST_TASK_WDT: return "TASK_WDT";
+    case ESP_RST_WDT: return "WDT";
+    case ESP_RST_BROWNOUT: return "BROWNOUT";
+    case ESP_RST_DEEPSLEEP: return "DEEPSLEEP";
+    default: return "OTHER";
+  }
+}
+
 static void setupStepper(AccelStepper& s, int enPin, double vDps, double aDps2) {
   s.setEnablePin(enPin);
   s.setPinsInverted(false, false, true);  // A4988 ENABLE is active low
@@ -163,6 +181,8 @@ static void setupStepper(AccelStepper& s, int enPin, double vDps, double aDps2) 
 
 void setup() {
   Serial.setTxBufferSize(4096);
+  // commands keep arriving while setup() is busy with WiFi and TLE: buffer them
+  Serial.setRxBufferSize(2048);
   Serial.begin(115200);
   Wire.begin(PIN_SDA, PIN_SCL);
   Wire.setClock(400000);
@@ -182,6 +202,7 @@ void setup() {
     mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
   }
   info(mpuOk ? "MPU_OK" : "MPU_MISSING");
+  Serial.printf("{\"ev\":\"INFO\",\"msg\":\"RESET\",\"reason\":\"%s\"}\n", resetReason());
 
   hmi::splashStatus("WiFi Wokwi-GUEST...");
   const bool wifi = POLARIS_QEMU ? false : net::connectWifi(15000);

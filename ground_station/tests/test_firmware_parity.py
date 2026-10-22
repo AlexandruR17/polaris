@@ -269,3 +269,37 @@ def test_state_machine_same_events_and_telemetry(path):
                 bad += 1
     # a handful of samples may straddle a step boundary
     assert bad <= len(cpp_tel) // 100 + 2
+
+
+def test_pass_search_never_blocks_a_control_tick(monkeypatch):
+    """On the ESP32 one SGP4 call in double precision costs about a millisecond:
+    a whole 24 h pass search in one tick starved the task watchdog in Wokwi.
+    The search is now spread over ticks; no tick may run more than a few
+    hundred propagations (the coarse budget plus one refinement)."""
+    from polaris_gs.core import orbit as O
+    from polaris_gs.sim.runner import DT_MS, SimRig
+
+    calls = [0]
+    real = O.Satellite.elevation
+
+    def counting(self, t):
+        calls[0] += 1
+        return real(self, t)
+
+    monkeypatch.setattr(O.Satellite, "elevation", counting)
+    events = []
+    t0 = 1792015503.0
+    rig = SimRig(events.append, t0)
+    rig.inp.ms, rig.inp.t_real = 0, t0
+    rig.ctl.boot_done(rig.inp)
+    worst, ms = 0, 0
+    for i in range(2500):                      # 50 s: homing, pass search, then DEMO
+        ms += DT_MS
+        if i == 600:
+            rig.ctl.command("MODE:DEMO")
+        calls[0] = 0
+        rig.step(ms, t0 + ms / 1000.0)
+        worst = max(worst, calls[0])
+    assert any('"ev":"PASS"' in e for e in events)
+    assert any('"msg":"DEMO"' in e for e in events)
+    assert worst <= 150, worst

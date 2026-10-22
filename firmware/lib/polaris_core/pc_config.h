@@ -22,6 +22,7 @@ constexpr double DEMO_MIN_MAX_EL_DEG = 20.0;  // DEMO skips low passes
 constexpr double PASS_SAMPLE_S = 2.0;
 constexpr int PASS_MAX_SAMPLES = 900;
 constexpr double PASS_SEARCH_H = 24.0;
+constexpr int PASS_SCAN_PER_TICK = 12;  // coarse pass search samples per control tick
 constexpr double KEYHOLE_PLAN_MARGIN = 0.8;
 
 // Mechanics: 200 steps/rev x 16 microsteps x 5:1 gear

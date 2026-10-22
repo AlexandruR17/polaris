@@ -99,6 +99,7 @@ bool Controller::loadTle(long catnr, const char* name, const char* l1, const cha
     sat_.init(s.name, s.l1, s.l2);
     pass_.valid = false;
     passTried_ = false;
+    search_.cancel();
     planValid_ = false;
     refreshLook(true);
     if (announce) emitTle();
@@ -140,6 +141,7 @@ void Controller::selectSat(long id) {
   }
   pass_.valid = false;
   passTried_ = false;
+  search_.cancel();
   planValid_ = false;
   refreshLook(true);
   if (demo_) endDemo();
@@ -183,11 +185,26 @@ geo::Vec3 Controller::satEnuAt(double t) const {
 }
 
 // ---------------------------------------------------------------- pass planning
+// Starts the search; finishPass runs when it is done (a few ticks later), so
+// SGP4 in double precision never blocks the control loop for long.
 void Controller::computePass(double t) {
-  pass_ = sat_.nextPass(t, PASS_SEARCH_H, MASK_EL_DEG);
+  search_.begin(&sat_, t, PASS_SEARCH_H, MASK_EL_DEG);
+  searchDemo_ = false;
+  pass_.valid = false;
   passTried_ = true;
   passTryMs_ = ms_;
   planValid_ = false;
+}
+
+void Controller::servicePassSearch() {
+  if (!search_.busy() || !search_.step(PASS_SCAN_PER_TICK)) return;
+  if (searchDemo_) demoSearchDone();
+  else finishPass();
+}
+
+void Controller::finishPass() {
+  const double t = search_.t0();
+  pass_ = search_.result();
   if (!pass_.valid) {
     emitf("{\"ev\":\"INFO\",\"msg\":\"NO_PASS\",\"sat\":%ld}", satId_);
     return;
@@ -339,9 +356,19 @@ void Controller::enterTracking() {
 
 void Controller::enterDemo() {
   setState(State::DEMO);
-  orbit::Pass p = sat_.nextPass(in_.tReal, PASS_SEARCH_H, MASK_EL_DEG);
-  for (int i = 0; i < 30 && p.valid && p.sets && p.maxEl < DEMO_MIN_MAX_EL_DEG; i++)
-    p = sat_.nextPass(p.los + 60.0, PASS_SEARCH_H, MASK_EL_DEG);
+  demoTries_ = 0;
+  search_.begin(&sat_, in_.tReal, PASS_SEARCH_H, MASK_EL_DEG);
+  searchDemo_ = true;
+}
+
+void Controller::demoSearchDone() {
+  const orbit::Pass p = search_.result();
+  if (p.valid && p.sets && p.maxEl < DEMO_MIN_MAX_EL_DEG && demoTries_ < 30) {
+    demoTries_++;  // too low for a demo: look at the next one
+    search_.begin(&sat_, p.los + 60.0, PASS_SEARCH_H, MASK_EL_DEG);
+    return;
+  }
+  searchDemo_ = false;
   if (!p.valid || !p.sets || p.maxEl < DEMO_MIN_MAX_EL_DEG) {
     emit("{\"ev\":\"ERR\",\"msg\":\"NO_PASS\"}");
     mode_ = Mode::AUTO;
@@ -615,6 +642,8 @@ const Outputs& Controller::update(const Inputs& in) {
   if (tick_ % (CONTROL_HZ / SAT_HZ) == 0 || !lookValid_) refreshLook(false);
   if (lookValid_) err_ = geo::pointingError(antAz_, antEl_, roll_, pitch_, yaw_, satEnuAt(tSim_));
 
+  servicePassSearch();
+
   switch (state_) {
     case State::BOOT:
       out_.driversEnabled = false;
@@ -668,6 +697,7 @@ const Outputs& Controller::update(const Inputs& in) {
     }
 
     case State::DEMO: {
+      if (search_.busy()) break;  // still looking for the demo pass
       if (!planValid_) {
         endDemo();
         mode_ = Mode::AUTO;
@@ -685,7 +715,7 @@ const Outputs& Controller::update(const Inputs& in) {
 
     case State::WAIT_AOS: {
       const bool stale = !pass_.valid || (pass_.sets && tSim_ > pass_.los + 1.0);
-      if (stale && (!passTried_ || (ms_ - passTryMs_) > 10000)) computePass(tSim_);
+      if (stale && !search_.busy() && (!passTried_ || (ms_ - passTryMs_) > 10000)) computePass(tSim_);
       if (lookValid_ && look_.el > MASK_EL_DEG) {
         enterTracking();
         pointingTick();

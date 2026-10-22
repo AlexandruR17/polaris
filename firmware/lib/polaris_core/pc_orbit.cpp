@@ -238,72 +238,102 @@ double Satellite::findSet(double t0, double horizonS, double mask) const {
 }
 
 Pass Satellite::nextPass(double t0, double horizonH, double mask) const {
-  Pass p{};
-  p.valid = false;
-  if (!ready_) return p;
-  const double horizonS = horizonH * 3600.0;
-  const double el0 = elevation(t0);
-  if (isGeo()) {
-    // geostationary: visible all the time or never, no search needed
-    if (el0 <= mask) return p;
-    Look l;
-    look(t0, l);
-    p.valid = true;
-    p.aos = t0;
-    p.aosAz = l.az;
-    p.sets = false;
-    p.los = 0;
-    p.tmax = t0;
-    p.maxEl = el0;
-    return p;
+  PassSearch s;
+  s.begin(this, t0, horizonH, mask);
+  while (!s.step(1 << 30)) {
   }
-  double aos = -1.0;
-  if (el0 > mask) {
-    // pass in progress: walk back to AOS (max 30 min)
-    double t = t0;
-    bool found = false;
-    while (t > t0 - 1800.0) {
-      const double t2 = t - 20.0;
-      if (elevation(t2) <= mask) {
-        aos = bisect(t2, t, mask);
-        found = true;
-        break;
-      }
-      t = t2;
+  return s.result();
+}
+
+void PassSearch::begin(const Satellite* sat, double t0, double horizonH, double maskDeg) {
+  sat_ = sat;
+  t0_ = t0;
+  horizonS_ = horizonH * 3600.0;
+  mask_ = maskDeg;
+  result_ = Pass{};
+  result_.valid = false;
+  phase_ = (sat && sat->ready()) ? START : DONE;
+}
+
+bool PassSearch::step(int budget) {
+  if (phase_ == DONE) return true;
+  const Satellite& s = *sat_;
+  if (phase_ == REFINE) {
+    Look la;
+    s.look(aos_, la);
+    result_.valid = true;
+    result_.aos = aos_;
+    result_.aosAz = la.az;
+    const double los = s.findSet(aos_ > t0_ ? aos_ : t0_, horizonS_, mask_);
+    if (los < 0) {
+      result_.sets = false;
+      result_.los = 0;
+      result_.tmax = t0_;
+      result_.maxEl = s.elevation(t0_);
+    } else {
+      result_.sets = true;
+      result_.los = los;
+      s.maxEl(aos_, los, result_.tmax, result_.maxEl);
     }
-    if (!found) aos = t;
-  } else {
-    double t = t0, prev = el0;
-    while (t < t0 + horizonS) {
-      const double step = prev < -10.0 ? 60.0 : 20.0;
-      const double t2 = t + step;
-      const double e2 = elevation(t2);
-      if (e2 > mask) {
-        aos = bisect(t, t2, mask);
-        break;
+    phase_ = DONE;
+    return true;
+  }
+  if (phase_ == START) {
+    const double el0 = s.elevation(t0_);
+    budget--;
+    if (s.isGeo()) {
+      // geostationary: visible all the time or never, no search needed
+      if (el0 > mask_) {
+        Look l;
+        s.look(t0_, l);
+        result_.valid = true;
+        result_.aos = t0_;
+        result_.aosAz = l.az;
+        result_.sets = false;
+        result_.los = 0;
+        result_.tmax = t0_;
+        result_.maxEl = el0;
       }
-      t = t2;
-      prev = e2;
+      phase_ = DONE;
+      return true;
     }
-    if (aos < 0) return p;
+    t_ = t0_;
+    prev_ = el0;
+    phase_ = el0 > mask_ ? BACK : FWD;
   }
-  Look la;
-  look(aos, la);
-  p.valid = true;
-  p.aos = aos;
-  p.aosAz = la.az;
-  const double los = findSet(aos > t0 ? aos : t0, horizonS, mask);
-  if (los < 0) {
-    p.sets = false;
-    p.los = 0;
-    p.tmax = t0;
-    p.maxEl = elevation(t0);
-    return p;
+  // pass in progress: walk back to AOS (max 30 min)
+  while (phase_ == BACK && budget > 0) {
+    if (t_ <= t0_ - 1800.0) {
+      aos_ = t_;
+      phase_ = REFINE;
+      break;
+    }
+    const double t2 = t_ - 20.0;
+    budget--;
+    if (s.elevation(t2) <= mask_) {
+      aos_ = s.bisect(t2, t_, mask_);
+      phase_ = REFINE;
+      break;
+    }
+    t_ = t2;
   }
-  p.sets = true;
-  p.los = los;
-  maxEl(aos, los, p.tmax, p.maxEl);
-  return p;
+  while (phase_ == FWD && budget > 0) {
+    if (t_ >= t0_ + horizonS_) {
+      phase_ = DONE;
+      return true;
+    }
+    const double t2 = t_ + (prev_ < -10.0 ? 60.0 : 20.0);
+    const double e2 = s.elevation(t2);
+    budget--;
+    if (e2 > mask_) {
+      aos_ = s.bisect(t_, t2, mask_);
+      phase_ = REFINE;
+      break;
+    }
+    t_ = t2;
+    prev_ = e2;
+  }
+  return false;
 }
 
 }  // namespace orbit

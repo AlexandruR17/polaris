@@ -10,7 +10,7 @@ from ..core import config as C
 from ..core import geometry as G
 from ..core import protocol as P
 from ..core import tracking as T
-from ..core.orbit import Satellite
+from ..core.orbit import PassSearch, Satellite
 
 STATES = P.STATES
 MODES = ("AUTO", "MANUAL", "DEMO", "IDLE", "STOW")
@@ -151,6 +151,9 @@ class Controller:
         self.pass_ = _Pass()
         self.pass_try_ms = 0
         self.pass_tried = False
+        self.search = None          # PassSearch in progress
+        self.search_demo = False
+        self.demo_tries = 0
         self.plan_valid = False
         self.plan_n = 0
         self.plan_t0 = 0.0
@@ -234,6 +237,7 @@ class Controller:
             self.sat = Satellite(s["name"], s["l1"], s["l2"])
             self.pass_ = _Pass()
             self.pass_tried = False
+            self.search = None
             self.plan_valid = False
             self.refresh_look(True)
             if announce:
@@ -268,6 +272,7 @@ class Controller:
             s["tried"] = True
         self.pass_ = _Pass()
         self.pass_tried = False
+        self.search = None
         self.plan_valid = False
         self.refresh_look(True)
         if self.demo:
@@ -313,11 +318,26 @@ class Controller:
 
     # ------------------------------------------------------------ planning
     def compute_pass(self, t):
-        p = self.sat.next_pass(t, C.PASS_SEARCH_H, C.MASK_EL_DEG)
-        self.pass_ = _Pass(p)
+        """Starts the search; finish_pass runs when it is done (a few ticks later)."""
+        self.search = PassSearch(self.sat, t, C.PASS_SEARCH_H, C.MASK_EL_DEG)
+        self.search_demo = False
+        self.pass_ = _Pass()
         self.pass_tried = True
         self.pass_try_ms = self.ms
         self.plan_valid = False
+
+    def service_search(self):
+        if self.search is None or not self.search.step(C.PASS_SCAN_PER_TICK):
+            return
+        s, self.search = self.search, None
+        if self.search_demo:
+            self.demo_search_done(s)
+        else:
+            self.finish_pass(s)
+
+    def finish_pass(self, s):
+        t = s.t0
+        self.pass_ = _Pass(s.result)
         if not self.pass_.valid:
             self.emit('{"ev":"INFO","msg":"NO_PASS","sat":%d}' % self.sat_id)
             return
@@ -454,11 +474,17 @@ class Controller:
 
     def enter_demo(self):
         self.set_state("DEMO")
-        p = self.sat.next_pass(self.inp.t_real, C.PASS_SEARCH_H, C.MASK_EL_DEG)
-        i = 0
-        while i < 30 and p is not None and p.los is not None and p.max_el < C.DEMO_MIN_MAX_EL_DEG:
-            p = self.sat.next_pass(p.los + 60.0, C.PASS_SEARCH_H, C.MASK_EL_DEG)
-            i += 1
+        self.demo_tries = 0
+        self.search = PassSearch(self.sat, self.inp.t_real, C.PASS_SEARCH_H, C.MASK_EL_DEG)
+        self.search_demo = True
+
+    def demo_search_done(self, s):
+        p = s.result
+        if p is not None and p.los is not None and p.max_el < C.DEMO_MIN_MAX_EL_DEG and self.demo_tries < 30:
+            self.demo_tries += 1          # too low for a demo: look at the next one
+            self.search = PassSearch(self.sat, p.los + 60.0, C.PASS_SEARCH_H, C.MASK_EL_DEG)
+            self.search_demo = True
+            return
         if p is None or p.los is None or p.max_el < C.DEMO_MIN_MAX_EL_DEG:
             self.emit('{"ev":"ERR","msg":"NO_PASS"}')
             self.mode = "AUTO"
@@ -706,6 +732,8 @@ class Controller:
             self.err = G.angle_between(
                 G.boresight_enu(self.ant_az, self.ant_el, self.roll, self.pitch, self.yaw), enu)
 
+        self.service_search()
+
         st = self.state
         if st == "BOOT":
             o.drivers_enabled = False
@@ -744,7 +772,9 @@ class Controller:
                     self.man_az = T.clamp(self.man_az + 0.5 * inp.encoder_delta, C.AZ_MIN_DEG, C.AZ_MAX_DEG)
             self.set_targets(self.man_az, self.man_el, v, C.AZ_ACCEL_DPS2, v, C.EL_ACCEL_DPS2)
         elif st == "DEMO":
-            if not self.plan_valid:
+            if self.search is not None:
+                pass                          # still looking for the demo pass
+            elif not self.plan_valid:
                 self.end_demo()
                 self.mode = "AUTO"
                 self.enter_wait_aos()
@@ -757,7 +787,7 @@ class Controller:
         elif st == "WAIT_AOS":
             ps = self.pass_
             stale = not ps.valid or (ps.sets and self.t_sim > ps.los + 1.0)
-            if stale and (not self.pass_tried or (self.ms - self.pass_try_ms) > 10000):
+            if stale and self.search is None and (not self.pass_tried or (self.ms - self.pass_try_ms) > 10000):
                 self.compute_pass(self.t_sim)
             if self.look is not None and self.look.el > C.MASK_EL_DEG:
                 self.enter_tracking()

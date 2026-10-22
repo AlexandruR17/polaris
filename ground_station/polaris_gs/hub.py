@@ -187,7 +187,7 @@ class GroundStation:
         d["_wall"] = time.time()
         ev = d["ev"]
         if ev == "CMD" and str(d.get("cmd", "")).upper().startswith(("VEH", "TLE")):
-            return  # 20 Hz vehicle stream and our own TLE queries: keep the log readable
+            return  # 10 Hz vehicle stream and our own TLE queries: keep the log readable
         if ev == "TLE" and d.get("l1") and d.get("l2"):
             # check skyfield against the elements the controller really uses
             self.xcheck.set_tle(int(d["sat"]), str(d.get("name", "")).strip(), d["l1"], d["l2"])
@@ -244,8 +244,13 @@ class GroundStation:
 
     # ------------------------------------------------------------ periodic work
     def tick_vehicle(self):
-        """20 Hz: the laptop plays the vehicle IMU (VEH command)."""
+        """10 Hz: the laptop plays the vehicle IMU (VEH command). Only while the
+        controller is alive and past BOOT: during setup() it does not read the
+        serial port and the commands would overflow its buffer."""
         if not self.veh_send or not self.link or not self.link.connected:
+            return
+        last = self.store.last
+        if last is None or last["mode"] == "BOOT" or time.monotonic() - self.store.t0 - last["_t"] > 1.0:
             return
         r, p, y = self.vehicle.attitude(time.monotonic() - self.veh_t0)
         self.send(P.format_command("VEH", r, p, y).strip())

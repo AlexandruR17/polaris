@@ -298,7 +298,7 @@ void drawLcd(const ctl::Controller& c, double tReal) {
     lcdRow(2, l);
   } else {
     lcdRow(1, "AOS --:--:--");
-    lcdRow(2, "fără pasaj 24 h");
+    lcdRow(2, c.passSearching() ? "calculez pasajul..." : "fără pasaj 24 h");
   }
   const ctl::State s = c.state();
   if (s == ctl::State::WAIT_AOS && p.valid) {

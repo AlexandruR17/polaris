@@ -52,6 +52,7 @@ class Satellite {
   bool isGeo() const;
 
  private:
+  friend class PassSearch;
   double bisect(double tBelow, double tAbove, double mask) const;
   double findSet(double t0, double horizonS, double mask) const;
   void maxEl(double a, double b, double& t, double& el) const;
@@ -65,6 +66,26 @@ class Satellite {
   double meanMotionRevDay_;
   double lat_, lon_;
   double site_[3];
+};
+
+// nextPass split into small steps, so a slow CPU never blocks its control
+// loop: step(budget) evaluates at most `budget` coarse samples; the final
+// refinement (AOS, LOS, maximum) runs in the call after the rise is found.
+class PassSearch {
+ public:
+  void begin(const Satellite* sat, double t0, double horizonH, double maskDeg);
+  bool step(int budget);  // true when finished
+  bool busy() const { return sat_ != nullptr && phase_ != DONE; }
+  void cancel() { phase_ = DONE; }
+  const Pass& result() const { return result_; }
+  double t0() const { return t0_; }
+
+ private:
+  enum Phase { START, BACK, FWD, REFINE, DONE };
+  const Satellite* sat_ = nullptr;
+  Phase phase_ = DONE;
+  double t0_ = 0, horizonS_ = 0, mask_ = 0, t_ = 0, prev_ = 0, aos_ = 0;
+  Pass result_{};
 };
 
 bool tleChecksumOk(const char* line);

@@ -17,7 +17,8 @@ DEMO_LEAD_S = 60.0             # DEMO jumps the clock to AOS minus this
 DEMO_MIN_MAX_EL_DEG = 20.0     # DEMO skips low passes
 PASS_SAMPLE_S = 2.0            # pass profile sampling period
 PASS_MAX_SAMPLES = 900         # 30 min of profile
-PASS_SEARCH_H = 24.0           # look-ahead for the next pass
+PASS_SEARCH_H = 24.0
+PASS_SCAN_PER_TICK = 12      # coarse pass search samples per control tick (keeps the loop short)           # look-ahead for the next pass
 KEYHOLE_PLAN_MARGIN = 0.8      # plan with 80 % of the max axis speed
 
 # Mechanics: 200 steps/rev x 16 microsteps x 5:1 gear
