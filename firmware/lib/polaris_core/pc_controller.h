@@ -6,6 +6,7 @@
 #include <stdint.h>
 
 #include "pc_config.h"
+#include "pc_control.h"
 #include "pc_filter.h"
 #include "pc_orbit.h"
 #include "pc_protocol.h"
@@ -45,6 +46,8 @@ struct AxisCmd {
   bool setPos = false;    // one-shot: set the current position to target
   double maxSpeedDps = 0;
   double accelDps2 = 0;
+  bool velMode = false;   // true: run at velDps (PID), false: move to target (profile)
+  double velDps = 0;
 };
 
 struct Outputs {
@@ -132,6 +135,7 @@ class Controller {
   void ack();
   void selectSat(long id);
   void emitTle();
+  void emitCtrl();
   void computePass(double t);
   void servicePassSearch();
   void finishPass();
@@ -180,6 +184,13 @@ class Controller {
   bool imuSeen_ = false;
   const char* src_ = "NONE";
   bool comp_ = true;
+  // axis control law
+  ctrl::AxisPid pidAz_, pidEl_;
+  bool ctrlPid_ = cfg::CTRL_PID_DEFAULT != 0;
+  bool ff_ = true;
+  bool pidActive_ = false;
+  bool pointed_ = false;
+  uint32_t pidMs_ = 0;
 
   // satellite look (10 Hz) with linear extrapolation in between
   orbit::Look look_{};

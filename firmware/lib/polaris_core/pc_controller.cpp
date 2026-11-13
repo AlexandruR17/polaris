@@ -41,7 +41,23 @@ void Controller::begin(bool simLimits, EmitFn emitFn, void* ctx) {
   emitFn_ = emitFn;
   emitCtx_ = ctx;
   state_ = State::BOOT;
+  ctrl::Gains g;
+  g.kp = PID_KP;
+  g.ki = PID_KI;
+  g.kd = PID_KD;
+  g.kff = 1.0;
+  pidAz_.configure(g, AZ_MAX_SPEED_DPS, AZ_ACCEL_DPS2, PID_TAU_R_S, PID_TAU_D_S, PID_KT);
+  pidEl_.configure(g, EL_MAX_SPEED_DPS, EL_ACCEL_DPS2, PID_TAU_R_S, PID_TAU_D_S, PID_KT);
   emitf("{\"ev\":\"BOOT\",\"fw\":\"%s\",\"sim\":%d}", FW_VERSION, simLimits ? 1 : 0);
+  emitCtrl();
+}
+
+// control law in use and its gains (on boot and after every change)
+void Controller::emitCtrl() {
+  const ctrl::Gains& a = pidAz_.gains();
+  const ctrl::Gains& e = pidEl_.gains();
+  emitf("{\"ev\":\"CTRL\",\"mode\":\"%s\",\"ff\":%d,\"az\":[%.3f,%.3f,%.3f],\"el\":[%.3f,%.3f,%.3f]}",
+        ctrlPid_ ? "PID" : "PROFILE", ff_ ? 1 : 0, a.kp, a.ki, a.kd, e.kp, e.ki, e.kd);
 }
 
 // ---------------------------------------------------------------- output
@@ -50,7 +66,7 @@ void Controller::emit(const char* line) {
 }
 
 void Controller::emitf(const char* fmt, ...) {
-  char buf[400];
+  char buf[640];
   va_list ap;
   va_start(ap, fmt);
   vsnprintf(buf, sizeof(buf), fmt, ap);
@@ -498,6 +514,32 @@ void Controller::command(const char* line) {
       break;
     case proto::Cmd::ACK: ack(); break;
     case proto::Cmd::TLE: emitTle(); break;
+    case proto::Cmd::CTRL:
+      if (c.ctrl[0]) {
+        ctrlPid_ = !strcmp(c.ctrl, "PID");
+        pidActive_ = false;
+      }
+      emitCtrl();
+      break;
+    case proto::Cmd::FF: {
+      ff_ = c.ff;
+      ctrl::Gains a = pidAz_.gains(), e = pidEl_.gains();
+      a.kff = e.kff = ff_ ? 1.0 : 0.0;
+      pidAz_.setGains(a);
+      pidEl_.setGains(e);
+      emitCtrl();
+      break;
+    }
+    case proto::Cmd::GAIN: {
+      ctrl::AxisPid& pid = c.axis[0] == 'A' ? pidAz_ : pidEl_;
+      ctrl::Gains g = pid.gains();
+      g.kp = c.kp;
+      g.ki = c.ki;
+      g.kd = c.kd;
+      pid.setGains(g);
+      emitCtrl();
+      break;
+    }
     case proto::Cmd::COMP:
       comp_ = c.comp;
       if (state_ == State::ACQUIRE || state_ == State::TRACK)
@@ -543,6 +585,8 @@ void Controller::setTargets(double azDeg, double elDeg, double vAz, double aAz, 
   out_.az.accelDps2 = aAz;
   out_.el.maxSpeedDps = vEl;
   out_.el.accelDps2 = aEl;
+  out_.az.velMode = false;
+  out_.el.velMode = false;
 }
 
 void Controller::pointingTick() {
@@ -573,6 +617,24 @@ void Controller::pointingTick() {
   az = trk::clamp(az, AZ_MIN_DEG, AZ_MAX_DEG);
   const double el = trk::clamp(p.el, EL_MIN_DEG, EL_MAX_DEG);
   setTargets(az, el, AZ_MAX_SPEED_DPS, AZ_ACCEL_DPS2, EL_MAX_SPEED_DPS, EL_ACCEL_DPS2);
+  pointed_ = true;
+  if (ctrlPid_) {
+    // PID with feed-forward: the axes run in speed mode
+    if (!pidActive_) {
+      pidAz_.reset(az, antAz_);
+      pidEl_.reset(el, antEl_);
+      pidMs_ = ms_;
+      pidActive_ = true;
+    }
+    double dt = (ms_ - pidMs_) / 1000.0;
+    pidMs_ = ms_;
+    if (dt < 0.005) dt = 1.0 / CONTROL_HZ;
+    if (dt > 0.1) dt = 0.1;
+    out_.az.velMode = true;
+    out_.az.velDps = pidAz_.update(az, antAz_, dt);
+    out_.el.velMode = true;
+    out_.el.velDps = pidEl_.update(el, antEl_, dt);
+  }
 
   const bool cond = err_ > KEYHOLE_ERR_DEG &&
                     (fabs(lead) > 0.5 * KEYHOLE_ERR_DEG || reqRate_ > 0.95 * AZ_MAX_SPEED_DPS);
@@ -593,6 +655,7 @@ const Outputs& Controller::update(const Inputs& in) {
   out_.az.setPos = false;
   out_.el.setPos = false;
   out_.stopNow = false;
+  pointed_ = false;
   out_.beep = BEEP_NONE;
   out_.tleRequest = 0;
 
@@ -785,6 +848,7 @@ const Outputs& Controller::update(const Inputs& in) {
   }
   out_.beep = pendingBeep_;
   pendingBeep_ = BEEP_NONE;
+  if (!pointed_) pidActive_ = false;  // left ACQUIRE/TRACK: next pointing starts bumpless
   leds();
   if (tick_ % (CONTROL_HZ / TELEMETRY_HZ) == 0) telemetry();
   tick_++;
@@ -825,10 +889,13 @@ void Controller::telemetry() {
         "\"cmd_az\":%.2f,\"cmd_el\":%.2f,\"ant_az\":%.2f,\"ant_el\":%.2f,\"roll\":%.2f,"
         "\"pitch\":%.2f,\"yaw\":%.2f,\"err_deg\":%.3f,\"mode\":\"%s\",\"next_aos\":%s,"
         "\"next_los\":%s,\"max_el\":%s,\"warp\":%d,\"comp\":%d,\"kh\":%d,\"src\":\"%s\","
-        "\"tle_age\":%.1f,\"tle_fb\":%d,\"axis\":\"%s\"}",
+        "\"tle_age\":%.1f,\"tle_fb\":%d,\"axis\":\"%s\",\"ctrl\":\"%s\",\"e_az\":%.3f,"
+        "\"e_el\":%.3f,\"u_az\":%.2f,\"u_el\":%.2f}",
         t, satId_, sAz, sEl, rng, cmdAz_, cmdEl_, antAz_, antEl_, roll_, pitch_, yaw_, err_,
         stateName(state_), aos, los, maxEl, demo_ ? warp_ : 1, comp_ ? 1 : 0, keyhole_ ? 1 : 0,
-        src_, tleAgeDays(), tleFallback() ? 1 : 0, manAxisEl_ ? "EL" : "AZ");
+        src_, tleAgeDays(), tleFallback() ? 1 : 0, manAxisEl_ ? "EL" : "AZ", ctrlPid_ ? "PID" : "PRF",
+        cmdAz_ - antAz_, cmdEl_ - antEl_, pidActive_ ? pidAz_.terms().u : 0.0,
+        pidActive_ ? pidEl_.terms().u : 0.0);
 }
 
 }  // namespace ctl

@@ -5,7 +5,7 @@
 
 namespace proto {
 
-enum class Cmd { NONE, SAT, MODE, WARP, VEH, VEH_OFF, JOG, HOME, STOW, ACK, COMP, TLE };
+enum class Cmd { NONE, SAT, MODE, WARP, VEH, VEH_OFF, JOG, HOME, STOW, ACK, COMP, TLE, CTRL, FF, GAIN };
 
 struct Command {
   Cmd cmd = Cmd::NONE;
@@ -16,6 +16,9 @@ struct Command {
   char axis[3] = {0};
   double jogDeg = 0;
   bool comp = true;
+  char ctrl[8] = {0};  // CTRL: "" (query), "PID" or "PROFILE"
+  bool ff = true;
+  double kp = 0, ki = 0, kd = 0;
 };
 
 constexpr double MAX_JOG_DEG = 90.0;

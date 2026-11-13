@@ -1,5 +1,7 @@
 #include "pc_protocol.h"
 
+#include "pc_config.h"
+
 #include <ctype.h>
 #include <math.h>
 #include <stdio.h>
@@ -99,6 +101,43 @@ const char* parseCommand(const char* line, Command& out) {
     if (w != 1 && w != 10 && w != 30 && w != 60) return "bad warp";
     out.cmd = Cmd::WARP;
     out.warp = (int)w;
+    return nullptr;
+  }
+  if (!strcmp(name, "CTRL")) {
+    char up[16];
+    trimCopy(rest, strlen(rest), up, sizeof(up));
+    upper(up);
+    if (up[0] && strcmp(up, "PID") != 0 && strcmp(up, "PROFILE") != 0) return "bad ctrl";
+    out.cmd = Cmd::CTRL;
+    memcpy(out.ctrl, up, strlen(up) + 1);  // validated: at most "PROFILE"
+    return nullptr;
+  }
+  if (!strcmp(name, "FF")) {
+    if (strcmp(rest, "0") != 0 && strcmp(rest, "1") != 0) return "bad ff";
+    out.cmd = Cmd::FF;
+    out.ff = rest[0] == '1';
+    return nullptr;
+  }
+  if (!strcmp(name, "GAIN")) {
+    char* parts[4];
+    if (split(rest, parts, 4) != 4) return "bad gain";
+    char ax[8];
+    trimCopy(parts[0], strlen(parts[0]), ax, sizeof(ax));
+    upper(ax);
+    if (strcmp(ax, "AZ") != 0 && strcmp(ax, "EL") != 0) return "bad gain";
+    double v[3];
+    for (int i = 0; i < 3; i++)
+      if (!parseDouble(parts[i + 1], v[i]) || !isfinite(v[i])) return "bad gain";
+    if (v[0] < 0 || v[0] > cfg::GAIN_MAX_KP || v[1] < 0 || v[1] > cfg::GAIN_MAX_KI || v[2] < 0 ||
+        v[2] > cfg::GAIN_MAX_KD)
+      return "gain range";
+    out.cmd = Cmd::GAIN;
+    out.axis[0] = ax[0];
+    out.axis[1] = ax[1];
+    out.axis[2] = 0;
+    out.kp = v[0];
+    out.ki = v[1];
+    out.kd = v[2];
     return nullptr;
   }
   if (!strcmp(name, "COMP")) {

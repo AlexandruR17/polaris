@@ -7,6 +7,7 @@ import math
 from dataclasses import dataclass
 
 from ..core import config as C
+from ..core import control as K
 from ..core import geometry as G
 from ..core import protocol as P
 from ..core import tracking as T
@@ -57,6 +58,8 @@ class AxisCmd:
     set_pos: bool = False
     max_speed_dps: float = 0.0
     accel_dps2: float = 0.0
+    vel_mode: bool = False   # True: run at vel_dps (PID), False: move to target (profile)
+    vel_dps: float = 0.0
 
 
 @dataclass
@@ -140,6 +143,14 @@ class Controller:
         self.imu_seen = False
         self.src = "NONE"
         self.comp = True
+        # axis control law
+        self.pid_az = K.AxisPid()
+        self.pid_el = K.AxisPid()
+        self.ctrl_pid = C.CTRL_PID_DEFAULT != 0
+        self.ff = True
+        self.pid_active = False
+        self.pointed = False
+        self.pid_ms = 0
         self.planner = True  # experiment switch, not in the firmware
         # look
         self.look = None
@@ -205,7 +216,20 @@ class Controller:
         self.sim_limits = sim_limits
         self.emit_fn = emit_fn
         self.state = "BOOT"
+        for pid, v, a in ((self.pid_az, C.AZ_MAX_SPEED_DPS, C.AZ_ACCEL_DPS2),
+                          (self.pid_el, C.EL_MAX_SPEED_DPS, C.EL_ACCEL_DPS2)):
+            pid.gains = K.Gains(C.PID_KP, C.PID_KI, C.PID_KD, 1.0)
+            pid.vmax, pid.amax = v, a
+            pid.tau_r, pid.tau_d, pid.kt = C.PID_TAU_R_S, C.PID_TAU_D_S, C.PID_KT
         self.emit('{"ev":"BOOT","fw":"%s","sim":%d}' % (C.FW_VERSION, 1 if sim_limits else 0))
+        self.emit_ctrl()
+
+    def emit_ctrl(self):
+        """Control law in use and its gains (on boot and after every change)."""
+        a, e = self.pid_az.gains, self.pid_el.gains
+        self.emit('{"ev":"CTRL","mode":"%s","ff":%d,"az":[%.3f,%.3f,%.3f],"el":[%.3f,%.3f,%.3f]}'
+                  % ("PID" if self.ctrl_pid else "PROFILE", 1 if self.ff else 0,
+                     a.kp, a.ki, a.kd, e.kp, e.ki, e.kd))
 
     def set_state(self, s):
         if s == self.state:
@@ -603,6 +627,20 @@ class Controller:
             self.ack()
         elif n == "TLE":
             self.emit_tle()
+        elif n == "CTRL":
+            if c.args:
+                self.ctrl_pid = c.args[0] == "PID"
+                self.pid_active = False
+            self.emit_ctrl()
+        elif n == "FF":
+            self.ff = c.args[0]
+            self.pid_az.gains.kff = self.pid_el.gains.kff = 1.0 if self.ff else 0.0
+            self.emit_ctrl()
+        elif n == "GAIN":
+            axis, kp, ki, kd = c.args
+            g = (self.pid_az if axis == "AZ" else self.pid_el).gains
+            g.kp, g.ki, g.kd = kp, ki, kd
+            self.emit_ctrl()
         elif n == "COMP":
             self.comp = c.args[0]
             if self.state in ("ACQUIRE", "TRACK"):
@@ -636,6 +674,7 @@ class Controller:
         o.el.target = to_steps(el)
         o.az.max_speed_dps, o.az.accel_dps2 = v_az, a_az
         o.el.max_speed_dps, o.el.accel_dps2 = v_el, a_el
+        o.az.vel_mode = o.el.vel_mode = False
 
     def pointing_tick(self):
         enu = self.sat_enu_at(self.t_sim)
@@ -665,6 +704,25 @@ class Controller:
         az = T.clamp(az, C.AZ_MIN_DEG, C.AZ_MAX_DEG)
         el = T.clamp(p_el, C.EL_MIN_DEG, C.EL_MAX_DEG)
         self.set_targets(az, el, C.AZ_MAX_SPEED_DPS, C.AZ_ACCEL_DPS2, C.EL_MAX_SPEED_DPS, C.EL_ACCEL_DPS2)
+        self.pointed = True
+        if self.ctrl_pid:
+            # PID with feed-forward: the axes run in speed mode
+            if not self.pid_active:
+                self.pid_az.reset(az, self.ant_az)
+                self.pid_el.reset(el, self.ant_el)
+                self.pid_ms = self.ms
+                self.pid_active = True
+            dt = (self.ms - self.pid_ms) / 1000.0
+            self.pid_ms = self.ms
+            if dt < 0.005:
+                dt = 1.0 / C.CONTROL_HZ
+            if dt > 0.1:
+                dt = 0.1
+            o = self.out
+            o.az.vel_mode = True
+            o.az.vel_dps = self.pid_az.update(az, self.ant_az, dt)
+            o.el.vel_mode = True
+            o.el.vel_dps = self.pid_el.update(el, self.ant_el, dt)
         cond = self.err > C.KEYHOLE_ERR_DEG and (abs(lead) > 0.5 * C.KEYHOLE_ERR_DEG
                                                  or self.req_rate > 0.95 * C.AZ_MAX_SPEED_DPS)
         if cond != self.keyhole and (self.ms - self.kh_ms) > 1000:
@@ -684,6 +742,7 @@ class Controller:
         o.stop_now = False
         o.beep = BEEP_NONE
         o.tle_request = 0
+        self.pointed = False
 
         if self.demo:
             if self.state == "DEMO":
@@ -838,6 +897,8 @@ class Controller:
             self.pending_tle = 0
         o.beep = self.pending_beep
         self.pending_beep = BEEP_NONE
+        if not self.pointed:
+            self.pid_active = False   # left ACQUIRE/TRACK: next pointing starts bumpless
         self.leds()
         if self.tick % (C.CONTROL_HZ // C.TELEMETRY_HZ) == 0:
             self.telemetry()
@@ -878,9 +939,13 @@ class Controller:
             '"cmd_az":%.2f,"cmd_el":%.2f,"ant_az":%.2f,"ant_el":%.2f,"roll":%.2f,'
             '"pitch":%.2f,"yaw":%.2f,"err_deg":%.3f,"mode":"%s","next_aos":%s,'
             '"next_los":%s,"max_el":%s,"warp":%d,"comp":%d,"kh":%d,"src":"%s",'
-            '"tle_age":%.1f,"tle_fb":%d,"axis":"%s"}'
+            '"tle_age":%.1f,"tle_fb":%d,"axis":"%s","ctrl":"%s","e_az":%.3f,'
+            '"e_el":%.3f,"u_az":%.2f,"u_el":%.2f}'
             % (P.iso_utc(self.t_sim), self.sat_id, s_az, s_el, rng, self.cmd_az, self.cmd_el,
                self.ant_az, self.ant_el, self.roll, self.pitch, self.yaw, self.err, self.state,
                aos, los, max_el, self.warp if self.demo else 1, 1 if self.comp else 0,
                1 if self.keyhole else 0, self.src, self.tle_age_days(),
-               1 if self.tle_fallback() else 0, "EL" if self.man_axis_el else "AZ"))
+               1 if self.tle_fallback() else 0, "EL" if self.man_axis_el else "AZ",
+               "PID" if self.ctrl_pid else "PRF", self.cmd_az - self.ant_az, self.cmd_el - self.ant_el,
+               self.pid_az.terms.u if self.pid_active else 0.0,
+               self.pid_el.terms.u if self.pid_active else 0.0))

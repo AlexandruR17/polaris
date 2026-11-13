@@ -64,6 +64,18 @@ TELEMETRY_HZ = 10
 SAT_HZ = 10
 CONTROL_HZ = 50
 
+# Axis control law (core/control.py): PID with feed-forward, speed output
+CTRL_PID_DEFAULT = 1      # 1: PID, 0: AccelStepper position profile
+PID_KP = 8.0              # 1/s
+PID_KI = 6.0              # 1/s^2
+PID_KD = 0.02             # s
+PID_TAU_R_S = 0.08        # reference rate filter
+PID_TAU_D_S = 0.04        # derivative filter
+PID_KT = 4.0              # anti-windup back-calculation, 1/s
+GAIN_MAX_KP = 50.0
+GAIN_MAX_KI = 200.0
+GAIN_MAX_KD = 5.0
+
 DEMO_WARPS = (10, 30, 60)
 DEFAULT_DEMO_WARP = 30
 

@@ -87,6 +87,8 @@ class Axis:
         self.max_speed = max_speed_dps * C.STEPS_PER_DEG
         self.accel = accel_dps2 * C.STEPS_PER_DEG
         self.enabled = True
+        self.vel_mode = False   # AccelStepper runSpeed(): follow vcmd (steps/s)
+        self.vcmd = 0.0
 
     def set_limits(self, max_speed_dps, accel_dps2):
         self.max_speed = max_speed_dps * C.STEPS_PER_DEG
@@ -94,10 +96,16 @@ class Axis:
 
     def move_to(self, steps):
         self.target = float(round(steps))
+        self.vel_mode = False
+
+    def set_velocity(self, steps_per_s):
+        self.vcmd = steps_per_s
+        self.vel_mode = True
 
     def stop_now(self):
         self.speed = 0.0
         self.target = self.position
+        self.vel_mode = False
 
     def set_position(self, steps):
         self.pos = float(steps)
@@ -115,6 +123,18 @@ class Axis:
     def run(self, dt):
         if not self.enabled:
             self.speed = 0.0
+            return
+        if self.vel_mode:
+            # speed mode: the rotor follows the command within the acceleration limit
+            m = self.accel * dt
+            dv = self.vcmd - self.speed
+            if dv > m:
+                dv = m
+            if dv < -m:
+                dv = -m
+            self.speed += dv
+            self.pos += self.speed * dt
+            self.target = self.pos
             return
         dist = self.target - self.pos
         if abs(dist) < 0.5 and abs(self.speed) < self.accel * dt * 2:

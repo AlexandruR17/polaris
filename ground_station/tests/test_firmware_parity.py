@@ -195,6 +195,8 @@ def test_wrap_and_rate_limit_match():
 COMMANDS = ["SAT:25544", "sat:33591", " MODE : demo ", "MODE:FAST", "WARP:30", "WARP:7", "WARP:",
             "VEH:1.5,-2.25,90", "VEH:off", "VEH:1,2", "VEH:50,0,0", "VEH:a,b,c", "VEH:nan,0,0",
             "JOG:az,-12.5", "JOG:EL,90", "JOG:EL,90.5", "JOG:XY,1", "HOME", "HOME:1", "STOW", "ACK", "TLE", "tle", "TLE:1",
+            "CTRL", "CTRL:pid", "CTRL:PROFILE", "CTRL:fast", "FF:0", "FF:1", "FF:2", "GAIN:az,8,6,0.02",
+            "GAIN:EL,0,0,0", "GAIN:EL,60,1,1", "GAIN:EL,1,1", "GAIN:XY,1,1,1", "GAIN:AZ,a,1,1", "GAIN:AZ,1,-1,0",
             "COMP:0", "COMP:1", "COMP:2", "", "FOO", "SAT:", "SAT:12a", "SAT:1234567890"]
 
 
@@ -209,6 +211,10 @@ def py_parse(line):
         return "JOG %s %.6f" % c.args
     if c.name == "COMP":
         return "COMP %d" % c.args[0]
+    if c.name == "FF":
+        return "FF %d" % c.args[0]
+    if c.name == "GAIN":
+        return "GAIN %s %.6f %.6f %.6f" % c.args
     if c.args:
         return f"{c.name} {c.args[0]}"
     return c.name

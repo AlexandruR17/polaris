@@ -173,6 +173,9 @@ static int runParse() {
       case proto::Cmd::STOW: printf("STOW\n"); break;
       case proto::Cmd::ACK: printf("ACK\n"); break;
       case proto::Cmd::TLE: printf("TLE\n"); break;
+      case proto::Cmd::CTRL: printf(c.ctrl[0] ? "CTRL %s\n" : "CTRL\n", c.ctrl); break;
+      case proto::Cmd::FF: printf("FF %d\n", c.ff ? 1 : 0); break;
+      case proto::Cmd::GAIN: printf("GAIN %s %.6f %.6f %.6f\n", c.axis, c.kp, c.ki, c.kd); break;
       case proto::Cmd::COMP: printf("COMP %d\n", c.comp ? 1 : 0); break;
       default: printf("NONE\n"); break;
     }
@@ -265,8 +268,10 @@ static int runScenario() {
     if (o.az.maxSpeedDps > 0) az.setLimits(o.az.maxSpeedDps, o.az.accelDps2);
     if (o.el.maxSpeedDps > 0) el.setLimits(o.el.maxSpeedDps, o.el.accelDps2);
     if (o.az.setPos) az.setPosition(o.az.target);
+    else if (o.az.velMode) az.setVelocity(o.az.velDps * cfg::STEPS_PER_DEG);
     else az.moveTo(o.az.target);
     if (o.el.setPos) el.setPosition(o.el.target);
+    else if (o.el.velMode) el.setVelocity(o.el.velDps * cfg::STEPS_PER_DEG);
     else el.moveTo(o.el.target);
     for (uint32_t i = 0; i < dtMs; i++) {
       az.run(0.001);

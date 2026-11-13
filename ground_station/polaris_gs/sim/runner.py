@@ -51,10 +51,14 @@ class SimRig:
             self.el.set_limits(o.el.max_speed_dps, o.el.accel_dps2)
         if o.az.set_pos:
             self.az.set_position(o.az.target)
+        elif o.az.vel_mode:
+            self.az.set_velocity(o.az.vel_dps * C.STEPS_PER_DEG)
         else:
             self.az.move_to(o.az.target)
         if o.el.set_pos:
             self.el.set_position(o.el.target)
+        elif o.el.vel_mode:
+            self.el.set_velocity(o.el.vel_dps * C.STEPS_PER_DEG)
         else:
             self.el.move_to(o.el.target)
 

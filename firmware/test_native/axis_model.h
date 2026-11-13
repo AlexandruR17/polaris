@@ -10,15 +10,25 @@ struct AxisModel {
   double pos = 0, speed = 0, target = 0;
   double maxSpeed = 0, accel = 1;
   bool enabled = true;
+  bool velMode = false;  // AccelStepper runSpeed(): follow vcmd (steps/s)
+  double vcmd = 0;
 
   void setLimits(double vDps, double aDps2) {
     maxSpeed = vDps * cfg::STEPS_PER_DEG;
     accel = aDps2 * cfg::STEPS_PER_DEG;
   }
-  void moveTo(double steps) { target = nearbyint(steps); }
+  void moveTo(double steps) {
+    target = nearbyint(steps);
+    velMode = false;
+  }
+  void setVelocity(double stepsPerS) {
+    vcmd = stepsPerS;
+    velMode = true;
+  }
   void stopNow() {
     speed = 0;
     target = position();
+    velMode = false;
   }
   void setPosition(double steps) {
     pos = steps;
@@ -30,6 +40,17 @@ struct AxisModel {
   void run(double dt) {
     if (!enabled) {
       speed = 0;
+      return;
+    }
+    if (velMode) {
+      // speed mode: the rotor follows the command within the acceleration limit
+      const double m = accel * dt;
+      double dv = vcmd - speed;
+      if (dv > m) dv = m;
+      if (dv < -m) dv = -m;
+      speed += dv;
+      pos += speed * dt;
+      target = pos;
       return;
     }
     const double dist = target - pos;

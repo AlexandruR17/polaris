@@ -68,6 +68,18 @@ constexpr int TELEMETRY_HZ = 10;
 constexpr int SAT_HZ = 10;
 constexpr int CONTROL_HZ = 50;
 
+// Axis control law (pc_control.h): PID with feed-forward, speed output
+constexpr int CTRL_PID_DEFAULT = 1;      // 1: PID, 0: AccelStepper position profile
+constexpr double PID_KP = 8.0;           // 1/s
+constexpr double PID_KI = 6.0;           // 1/s^2
+constexpr double PID_KD = 0.02;          // s
+constexpr double PID_TAU_R_S = 0.08;     // reference rate filter
+constexpr double PID_TAU_D_S = 0.04;     // derivative filter
+constexpr double PID_KT = 4.0;           // anti-windup back-calculation, 1/s
+constexpr double GAIN_MAX_KP = 50.0;
+constexpr double GAIN_MAX_KI = 200.0;
+constexpr double GAIN_MAX_KD = 5.0;
+
 constexpr int DEFAULT_SAT = 25544;
 constexpr int DEFAULT_DEMO_WARP = 30;
 

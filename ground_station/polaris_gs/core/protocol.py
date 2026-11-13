@@ -7,12 +7,14 @@ import math
 import time
 from dataclasses import dataclass
 
+from . import config as C
+
 TELEMETRY_KEYS = ("t_utc", "sat", "sat_az", "sat_el", "range_km", "cmd_az", "cmd_el",
                   "ant_az", "ant_el", "roll", "pitch", "yaw", "err_deg", "mode",
                   "next_aos", "next_los", "max_el")
 
 EVENTS = ("BOOT", "AOS", "LOS", "HOME_OK", "ESTOP", "FAULT", "MODE", "TLE_OK",
-          "TLE_FALLBACK", "TLE", "KEYHOLE", "RATE_LIMIT", "WRAP", "PASS", "ACK", "CMD", "ERR", "INFO")
+          "TLE_FALLBACK", "TLE", "CTRL", "KEYHOLE", "RATE_LIMIT", "WRAP", "PASS", "ACK", "CMD", "ERR", "INFO")
 
 STATES = ("BOOT", "HOMING", "IDLE", "WAIT_AOS", "ACQUIRE", "TRACK", "STOW", "MANUAL",
           "DEMO", "ESTOP", "FAULT")
@@ -58,6 +60,28 @@ def parse_command(line):
         if w not in (1, 10, 30, 60):
             raise ValueError("bad warp")
         return Command(name, (w,))
+    if name == "CTRL":
+        m = rest.upper()
+        if m and m not in ("PID", "PROFILE"):
+            raise ValueError("bad ctrl")
+        return Command(name, (m,) if m else ())
+    if name == "FF":
+        if rest not in ("0", "1"):
+            raise ValueError("bad ff")
+        return Command(name, (rest == "1",))
+    if name == "GAIN":
+        parts = rest.split(",")
+        if len(parts) != 4 or parts[0].strip().upper() not in ("AZ", "EL"):
+            raise ValueError("bad gain")
+        try:
+            kp, ki, kd = (float(x) for x in parts[1:])
+        except ValueError:
+            raise ValueError("bad gain") from None
+        if not all(math.isfinite(v) for v in (kp, ki, kd)):
+            raise ValueError("bad gain")
+        if not (0 <= kp <= C.GAIN_MAX_KP and 0 <= ki <= C.GAIN_MAX_KI and 0 <= kd <= C.GAIN_MAX_KD):
+            raise ValueError("gain range")
+        return Command(name, (parts[0].strip().upper(), kp, ki, kd))
     if name == "COMP":
         if rest not in ("0", "1"):
             raise ValueError("bad comp")
